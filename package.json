@@ -1,0 +1,21 @@
+{
+	"name": "volumio-phishin",
+	"version": "1.0.0",
+	"description": "A Phish.in plugin for Volumio2. Live Phish audio streams via phish.in API.",
+	"main": "index.js",
+	"scripts": {
+		"test": "echo \"Error: no test specified\" && exit 1"
+	},
+	"author": "lostmyshape",
+	"license": "ISC",
+	"volumio_info": {
+		"prettyName": "Phish.in",
+		"icon": "fa-music",
+		"plugin_type": "music_service"
+	},
+	"dependencies": {
+		"fs-extra": "^0.28.0",
+		"kew": "^0.7.0",
+		"v-conf": "^1.4.0"
+	}
+}
