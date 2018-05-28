@@ -102,46 +102,52 @@ ControllerPhishin.prototype.setConf = function(varName, varValue) {
 
 ControllerPhishin.prototype.addToBrowseSources = function () {
 	var self = this;
-
 	self.commandRouter.volumioAddToBrowseSources({
 			name: 'Phish.in',
 			uri: 'phishin',
 			plugin_type: 'music_service',
-			plugin_name: "phishin"
+			plugin_name: 'volumio-phishin'
 	});
 };
 
 ControllerPhishin.prototype.handleBrowseUri = function (curUri) {
     var self = this;
-self.commandRouter.logger.info('curUri = ' + curUri);
+		self.commandRouter.logger.debug('curUri = ' + curUri);
+console.log(curUri);
     //self.commandRouter.logger.info(curUri);
     var response;
 
+		self.logger.info("CURURI: "+curUri);
+
 		if (curUri.startsWith('phishin')) {
+			self.commandRouter.logger.info("It's phishin");
 			if (curUri == 'phishin') {
 				response = libQ.resolve({
-					navigation: {
-						lists: [
+					"navigation": {
+					"prev": {
+							"uri": "/"
+						},
+						"lists": [
 							{
-								"availableListViews": ["list"],
+								"availableListViews": ["list","grid"],
 								"items": [
 									{
-										service: 'phishin',
-										type: 'folder',
-										title: 'Years';
-										artist: '',
-										album: '',
-										icon: 'fa fa-calendar-check-o',
-										uri: 'phishin/years'
+										"service": "phishin",
+										"type": "folder",
+										"title": "Years",
+										"artist": "",
+										"album": "",
+										"icon": "fa fa-calendar-check-o",
+										"uri": "phishin/years"
 									},
 									{
-										service: 'phishin',
-										type: 'folder',
-										title: 'Tours';
-										artist: '',
-										album: '',
-										icon: 'fa fa-globe',
-										uri: 'phishin/tours'
+										"service": "phishin",
+										"type": "folder",
+										"title": "Tours";
+										"artist": "",
+										"album": "",
+										"icon": "fa fa-globe",
+										"uri": "phishin/tours"
 									}
 								]
 							}
