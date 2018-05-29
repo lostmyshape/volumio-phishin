@@ -5,6 +5,9 @@ var fs=require('fs-extra');
 var config = new (require('v-conf'))();
 var exec = require('child_process').exec;
 var execSync = require('child_process').execSync;
+var unirest = require('unirest');
+
+var phApiBaseUrl = 'http://phish.in/api/v1/';
 
 
 module.exports = ControllerPhishin;
@@ -112,15 +115,11 @@ ControllerPhishin.prototype.addToBrowseSources = function () {
 
 ControllerPhishin.prototype.handleBrowseUri = function (curUri) {
     var self = this;
-		self.commandRouter.logger.debug('curUri = ' + curUri);
-console.log(curUri);
-    //self.commandRouter.logger.info(curUri);
     var response;
 
 		self.logger.info("CURURI: "+curUri);
 
 		if (curUri.startsWith('phishin')) {
-			self.commandRouter.logger.info("It's phishin");
 			if (curUri == 'phishin') {
 				response = libQ.resolve({
 					"navigation": {
@@ -129,11 +128,11 @@ console.log(curUri);
 						},
 						"lists": [
 							{
-								"availableListViews": ["list","grid"],
+								"availableListViews": ["list"],
 								"items": [
 									{
 										"service": "phishin",
-										"type": "folder",
+										"type": "item-no-menu",
 										"title": "Years",
 										"artist": "",
 										"album": "",
@@ -142,7 +141,7 @@ console.log(curUri);
 									},
 									{
 										"service": "phishin",
-										"type": "folder",
+										"type": "item-no-menu",
 										"title": "Tours",
 										"artist": "",
 										"album": "",
@@ -158,15 +157,72 @@ console.log(curUri);
 
 			else if (curUri.startsWith('phishin/years')){
 				//list years
+				if (curUri == 'phishin/years') {
+					response = self.listYears(curUri);
+				}
+				else {
+					//list shows from year picked
+				}
 			}
 
 			else if (curUri.startsWith('phishin/tours')) {
 				//list tours
 			}
 		}
-self.commandRouter.logger.info('response = ' + response);
     return response;
 };
+
+ControllerPhishin.prototype.listYears = function () {
+	var self = this;
+
+	var defer = libQ.defer();
+
+	var response = {
+		"navigation": {
+			"lists": [
+				{
+					"availableListViews":["list"],
+					"items":[]
+				}
+			],
+			"prev":{
+				"uri":"phishin"
+			}
+		}
+	};
+
+	var uri = phApiBaseUrl + 'years.json?include_show_counts=true';
+	self.logger.info("phURI: "+uri);
+
+	unirest.get(uri).end( function(res){
+		if (res.error){
+			defer.reject(new Error('An error occurred while querying Phish.in.'));
+		}
+		else {
+			for (var i = 0; i < res.body.data.length; i++){
+				var name = res.body.data[i].date + ': ' + res.body.data[i].show_count + ' shows';
+				var yearUri = 'phishin/years/'+ res.body.data[i].date;
+				self.logger.info('name: '+name+', yearUri: '+yearUri);
+				var yearFolder = {
+					"service": "phishin",
+					"type": "item-no-menu",
+					"title": name,
+					"artist": "",
+					"album": "",
+					"icon": "fa fa-calendar",
+					"uri": yearUri
+				};
+				response.navigation.lists[0].items.push(yearFolder);
+			}
+//			self.logger.info("1st item name: "+response.navigation.lists[0].items[0].title);
+
+			defer.resolve(response);
+		}
+	});
+
+	return defer.promise;
+//	return response;
+}
 
 
 // Define a method to clear, add, and play an array of tracks
