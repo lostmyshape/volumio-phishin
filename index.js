@@ -143,7 +143,7 @@ console.log(curUri);
 									{
 										"service": "phishin",
 										"type": "folder",
-										"title": "Tours";
+										"title": "Tours",
 										"artist": "",
 										"album": "",
 										"icon": "fa fa-globe",
