@@ -1,5 +1,10 @@
 {
   "PLUGIN_CONFIGURATION":"Phish.in Plugin Configuration",
   "NO_CONFIGURATION_AVAILABLE":"No configuration available",
-  "SAVE":"Save"
+  "SAVE":"Save",
+  "YEARS": "Years",
+  "TOURS": "Tours",
+  "SHOWS_LWR": "shows",
+  "ON_THIS_DAY": "On This Day",
+  "RANDOM_SHOW": "Random Show"
 }
