@@ -202,13 +202,20 @@ ControllerPhishin.prototype.handleBrowseUri = function (curUri) {
 				response = self.listShows(curUri);
 			}
 
+			else if (curUri.startsWith('phishin/shows')) {
+				//get random show tracks
+				response = self.listShowTracks(curUri);
+			}
+
 			else if (curUri.startsWith('phishin/random')) {
 				//get random show tracks
+				response = self.listShowTracks(curUri);
 			}
 		}
     return response;
 };
 
+//List years or tours
 ControllerPhishin.prototype.listYearsTours = function (curUri) {
 	var self = this;
 	var defer = libQ.defer();
@@ -272,6 +279,7 @@ ControllerPhishin.prototype.listYearsTours = function (curUri) {
 //	return response;
 }
 
+//List shows by years, tours, or show of day
 ControllerPhishin.prototype.listShows = function(curUri) {
 	var self = this;
 	var defer = libQ.defer();
@@ -285,7 +293,7 @@ ControllerPhishin.prototype.listShows = function(curUri) {
 	var prevUri = 'phishin';
 	var uri;
 	var months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-	self.logger.info("whichCat: "+whichCat+", whichFolder: "+whichFolder);
+	//self.logger.info("whichCat: "+whichCat+", whichFolder: "+whichFolder);
 
 	if (whichCat == 'years') {
 		prevUri = 'phishin/years';
@@ -297,7 +305,7 @@ ControllerPhishin.prototype.listShows = function(curUri) {
 	} else if (whichCat == 'thisday') {
 		uri = phApiBaseUrl + 'shows-on-day-of-year/' + todayMonthDay + '.json';
 	}
-	self.logger.info("uri: " + uri);
+	//self.logger.info("uri: " + uri);
 
 	var response = {
 		"navigation": {
@@ -319,34 +327,50 @@ ControllerPhishin.prototype.listShows = function(curUri) {
 		}
 		else {
 			var dataLength = (whichCat == 'tours') ? res.body.data.shows.length : res.body.data.length;
-			for (var i = 0; i < dataLength; i++){
-				if (whichCat == 'tours') {
-					var d = new Date(res.body.data.shows[i].date);
-					var showDate = months[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();
-					var showVenue = res.body.data.shows[i].venue_name;
-					var showCity = res.body.data.shows[i].location;
-					var showUri = 'phishin/shows/'+  res.body.data.shows[i].id;
+			if (dataLength > 0) {
+				//If shows returned, list them
+				for (var i = 0; i < dataLength; i++){
+					if (whichCat == 'tours') {
+						var d = new Date(res.body.data.shows[i].date);
+						var showDate = months[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();
+						var showVenue = res.body.data.shows[i].venue_name;
+						var showCity = res.body.data.shows[i].location;
+						var showUri = 'phishin/shows/'+  res.body.data.shows[i].id + '?prevUri=' + curUri;
+					}
+					else {
+						var d = new Date(res.body.data[i].date);
+						var showDate = months[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();
+						var showVenue = res.body.data[i].venue_name;
+						var showCity = res.body.data[i].location;
+						var showUri = 'phishin/shows/'+  res.body.data[i].id + '?prevUri=' + curUri;
+					}
+					//self.logger.info(showDate+' '+showVenue+' '+showCity+', showUri: '+ showUri);
+					var showFolder = {
+						"service": "phishin",
+						"type": "folder",
+						"title": showDate + ' ' + showVenue + ', ' + showCity,
+						"artist": "",
+						"album": "",
+						"icon": "fa fa-headphones",
+						"uri": showUri
+					};
+					response.navigation.lists[0].items.push(showFolder);
 				}
-				else {
-					var d = new Date(res.body.data[i].date);
-					var showDate = months[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();
-					var showVenue = res.body.data[i].venue_name;
-					var showCity = res.body.data[i].location;
-					var showUri = 'phishin/shows/'+  res.body.data[i].id;
-				}
-				self.logger.info(showDate+' '+showVenue+' '+showCity+', showUri: '+ showUri);
+			}
+			else {
+				//Add message when no show of day
 				var showFolder = {
 					"service": "phishin",
-					"type": "folder",
-					"title": showDate + ' ' + showVenue + ', ' + showCity,
+					"type": "item-no-menu",
+					"title": self.getPhishinI18nString('NO_SHOW_TODAY'),
 					"artist": "",
 					"album": "",
-					"icon": "fa fa-headphones",
-					"uri": showUri
+					"icon": "fa fa-ban",
+					"uri": 'phishin'
 				};
 				response.navigation.lists[0].items.push(showFolder);
 			}
-//			self.logger.info("1st item name: "+response.navigation.lists[0].items[0].title);
+			//self.logger.info("1st item name: "+response.navigation.lists[0].items[0].title);
 
 			defer.resolve(response);
 		}
@@ -355,6 +379,111 @@ ControllerPhishin.prototype.listShows = function(curUri) {
 	return defer.promise;
 }
 
+//list tracks when show picked
+ControllerPhishin.prototype.listShowTracks = function(curUri) {
+	var self = this;
+	var defer = libQ.defer();
+
+	var showUri = curUri.match(/[^?]*/);
+	showUri = showUri[0];
+	var prevUri = curUri.match(/prevUri=[^&\s]*/m);
+	if (!prevUri) {
+		prevUri = 'phishin';
+	}
+	else {
+		prevUri = prevUri[0];
+		prevUri = prevUri.substring(prevUri.indexOf('=') +1 ,prevUri.length);
+	}
+
+
+	var uriSplitted = showUri.split('/');
+	if (uriSplitted[1] == 'random') {
+		var showId = '';
+	}
+	else {
+		var showId = uriSplitted[2];
+	}
+	self.logger.info('ShowId: ' + showId);
+
+	var phishinDefer = self.getShowTracks(showId);
+	phishinDefer.then(function(results){
+		self.logger.info("results[0] title: " + results[0].title);
+		var response = {
+			"navigation": {
+				"lists": [
+					{
+						"availableListViews":["list"],
+						"items":[]
+					}
+				],
+				"prev":{
+					"uri":prevUri
+				}
+			}
+		};
+		for (var i = 0; i < results.length; i++) {
+			self.logger.info("track: " + results[i].title);
+			response.navigation.lists[0].items.push(results[i]);
+		}
+		self.logger.info("1st item name: "+response.navigation.lists[0].items[0].title);
+
+		defer.resolve(response);
+
+	});
+
+	return defer.promise;
+}
+
+//return list of tracks based on show id
+ControllerPhishin.prototype.getShowTracks = function(id) {
+	var self = this;
+	var defer = libQ.defer();
+
+	if (id === "") {
+		var uri = phApiBaseUrl + 'random-show.json';
+	}
+	else {
+		var uri = phApiBaseUrl + 'shows/' + id + '.json';
+	}
+
+	unirest.get(uri).end( function(res){
+		if (res.error){
+			defer.reject(new Error('An error occurred while querying Phish.in.'));
+		}
+		else {
+			var response = [];
+			var d = new Date(res.body.data.date);
+			var months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+			var showDate = months[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();
+			var showVenue = res.body.data.venue.name;
+			var showCity = res.body.data.venue.location;
+			var showTitle = showDate + ' ' + showVenue + ', ' + showCity;
+			for (var i = 0; i < res.body.data.tracks.length; i++) {
+				var track = res.body.data.tracks[i];
+				var trackHours = parseInt((track.duration / (1000 * 60 * 60)) % 24),
+				trackMinutes = parseInt((track.duration / (1000 * 60)) % 60),
+				trackSeconds = parseInt((track.duration / 1000) % 60);
+				trackMinutes = (trackHours > 0 && trackMinutes < 10) ? "0" + trackMinutes : trackMinutes;
+				trackSeconds = (trackSeconds < 10) ? "0" + trackSeconds : trackSeconds;
+				var trackTime = ((trackHours > 0) ? trackHours + ":" : "") + trackMinutes + ":" + trackSeconds;
+				response.push({
+					"service": "phishin",
+					"type": "song",
+					"title": track.title + " (" + trackTime + ")",
+					"name": track.title + " (" + trackTime + ")",
+					"artist": "Phish",
+					"album": showTitle,
+					"icon": "fa fa-music",
+					"uri": track.mp3,
+					"duration": Math.trunc(track.duration / 1000)
+				});
+			}
+			defer.resolve(response);
+		}
+	});
+
+	return defer.promise;
+}
 
 // Define a method to clear, add, and play an array of tracks
 ControllerPhishin.prototype.clearAddPlayTrack = function(track) {
