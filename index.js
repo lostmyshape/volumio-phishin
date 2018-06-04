@@ -38,7 +38,7 @@ ControllerPhishin.prototype.onStart = function() {
 	self.addToBrowseSources();
 
 	self.mpdPlugin = this.commandRouter.pluginManager.getPlugin('music_service', 'mpd');
-
+	self.serviceName = "volumio-phishin";
 	self.loadPhishinI18nStrings();
 
   return libQ.resolve();
@@ -134,7 +134,7 @@ ControllerPhishin.prototype.handleBrowseUri = function (curUri) {
 								"availableListViews": ["list"],
 								"items": [
 									{
-										"service": "phishin",
+										"service": self.serviceName,
 										"type": "item-no-menu",
 										"title": self.getPhishinI18nString('YEARS'),
 										"artist": "",
@@ -143,7 +143,7 @@ ControllerPhishin.prototype.handleBrowseUri = function (curUri) {
 										"uri": "phishin/years"
 									},
 									{
-										"service": "phishin",
+										"service": self.serviceName,
 										"type": "item-no-menu",
 										"title": self.getPhishinI18nString('TOURS'),
 										"artist": "",
@@ -152,7 +152,7 @@ ControllerPhishin.prototype.handleBrowseUri = function (curUri) {
 										"uri": "phishin/tours"
 									},
 									{
-										"service": "phishin",
+										"service": self.serviceName,
 										"type": "item-no-menu",
 										"title": self.getPhishinI18nString('ON_THIS_DAY'),
 										"artist": "",
@@ -161,7 +161,7 @@ ControllerPhishin.prototype.handleBrowseUri = function (curUri) {
 										"uri": "phishin/thisday"
 									},
 									{
-										"service": "phishin",
+										"service": self.serviceName,
 										"type": "folder",
 										"title": self.getPhishinI18nString('RANDOM_SHOW'),
 										"artist": "",
@@ -259,7 +259,7 @@ ControllerPhishin.prototype.listYearsTours = function (curUri) {
 				}
 				//self.logger.info('name: '+name+', yearTourUri: '+yearTourUri);
 				var yearTourFolder = {
-					"service": "phishin",
+					"service": self.serviceName,
 					"type": "item-no-menu",
 					"title": name,
 					"artist": "",
@@ -346,7 +346,7 @@ ControllerPhishin.prototype.listShows = function(curUri) {
 					}
 					//self.logger.info(showDate+' '+showVenue+' '+showCity+', showUri: '+ showUri);
 					var showFolder = {
-						"service": "phishin",
+						"service": self.serviceName,
 						"type": "folder",
 						"title": showDate + ' ' + showVenue + ', ' + showCity,
 						"artist": "",
@@ -360,7 +360,7 @@ ControllerPhishin.prototype.listShows = function(curUri) {
 			else {
 				//Add message when no show of day
 				var showFolder = {
-					"service": "phishin",
+					"service": self.serviceName,
 					"type": "item-no-menu",
 					"title": self.getPhishinI18nString('NO_SHOW_TODAY'),
 					"artist": "",
@@ -403,11 +403,11 @@ ControllerPhishin.prototype.listShowTracks = function(curUri) {
 	else {
 		var showId = uriSplitted[2];
 	}
-	self.logger.info('ShowId: ' + showId);
+	//self.logger.info('ShowId: ' + showId);
 
 	var phishinDefer = self.getShowTracks(showId);
 	phishinDefer.then(function(results){
-		self.logger.info("results[0] title: " + results[0].title);
+		//self.logger.info("results[0] title: " + results[0].title);
 		var response = {
 			"navigation": {
 				"lists": [
@@ -422,7 +422,7 @@ ControllerPhishin.prototype.listShowTracks = function(curUri) {
 			}
 		};
 		for (var i = 0; i < results.length; i++) {
-			self.logger.info("track: " + results[i].title);
+			//self.logger.info("track: " + results[i].title);
 			response.navigation.lists[0].items.push(results[i]);
 		}
 		self.logger.info("1st item name: "+response.navigation.lists[0].items[0].title);
@@ -435,16 +435,19 @@ ControllerPhishin.prototype.listShowTracks = function(curUri) {
 }
 
 //return list of tracks based on show id
-ControllerPhishin.prototype.getShowTracks = function(id) {
+ControllerPhishin.prototype.getShowTracks = function(id, sendList) {
 	var self = this;
 	var defer = libQ.defer();
+	if (sendList === undefined) sendList = true;
+	self.logger.info("id in getShowTracks: " + id);
 
-	if (id === "") {
+	if (id === ""  || id === undefined) {
 		var uri = phApiBaseUrl + 'random-show.json';
 	}
 	else {
 		var uri = phApiBaseUrl + 'shows/' + id + '.json';
 	}
+	self.logger.info("uri in getShowTracks: " + uri);
 
 	unirest.get(uri).end( function(res){
 		if (res.error){
@@ -467,17 +470,54 @@ ControllerPhishin.prototype.getShowTracks = function(id) {
 				trackSeconds = (trackSeconds < 10) ? "0" + trackSeconds : trackSeconds;
 				var trackTime = ((trackHours > 0) ? trackHours + ":" : "") + trackMinutes + ":" + trackSeconds;
 				response.push({
-					"service": "phishin",
+					"service": self.serviceName,
 					"type": "song",
-					"title": track.title + " (" + trackTime + ")",
-					"name": track.title + " (" + trackTime + ")",
+					"title": track.title + (sendList ? " (" + trackTime + ")" : ""),
+					"name": track.title + (sendList ? " (" + trackTime + ")" : ""),
+					"tracknumber": track.position,
 					"artist": "Phish",
 					"album": showTitle,
-					"icon": "fa fa-music",
-					"uri": track.mp3,
+					"icon": (sendList ? "fa fa-music" : ""),
+					"albumart": "/albumart?sourceicon=music_service/volumio_phishin/ph-cover.png",
+					"uri": (sendList ? "phishin/track/" + track.id +"?showTitle=" + showTitle : track.mp3),
 					"duration": Math.trunc(track.duration / 1000)
 				});
 			}
+			defer.resolve(response);
+		}
+	});
+
+	return defer.promise;
+}
+
+ControllerPhishin.prototype.getTrack = function(id, showTitle) {
+	var self = this;
+	var defer = libQ.defer();
+
+	var uri = phApiBaseUrl + 'tracks/' + id + '.json';
+
+	unirest.get(uri).end( function(res){
+		if (res.error){
+			defer.reject(new Error('An error occurred while querying Phish.in.'));
+		}
+		else {
+			var d = new Date(res.body.data.show_date);
+			var months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+			var showDate = months[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();
+			if (showTitle === undefined) showTitle = showDate;
+			self.logger.info("from getTrack, showTitle: " + showTitle);
+			var response = [{
+				"service": self.serviceName,
+				"type": "song",
+				"title": res.body.data.title,
+				"name": res.body.data.title,
+				"tracknumber": res.body.data.position,
+				"artist": "Phish",
+				"album": showTitle,
+				"albumart": "/albumart?sourceicon=music_service/volumio_phishin/ph-cover.png",
+				"uri": res.body.data.mp3,
+				"duration": Math.trunc(res.body.data.duration / 1000)
+			}];
 			defer.resolve(response);
 		}
 	});
@@ -544,9 +584,37 @@ ControllerPhishin.prototype.pushState = function(state) {
 
 ControllerPhishin.prototype.explodeUri = function(uri) {
 	var self = this;
-	var defer=libQ.defer();
+	var defer = libQ.defer();
+	var items = [];
 
-	// Mandatory: retrieve all info for a given URI
+	// Need to explode maybe "search"
+	if (uri.startsWith('phishin/shows')) {
+		var showUri = uri.match(/[^?]*/);
+		showUri = showUri[0];
+		var uriSplitted = showUri.split('/');
+		var showId = uriSplitted[2];
+
+		items = self.getShowTracks(showId, false);
+		defer.resolve(items);
+	}
+	else if (uri.startsWith('phishin/track')) {
+		var trackUri = uri.match(/[^?]*/);
+		trackUri = trackUri[0];
+		var uriSplitted = trackUri.split('/');
+		var trackId = uriSplitted[2];
+		var showTitle = uri.match(/showTitle=[^&$]*/m);
+		showTitle = showTitle[0];
+		showTitle = showTitle.substring(showTitle.indexOf('=') +1 ,showTitle.length);
+
+		items = self.getTrack(trackId, showTitle);
+		defer.resolve(items);
+	}
+	else if (uri.startsWith('phishin/random')) {
+		var trackId = "";
+
+		items = self.getShowTracks(showId, false);
+		defer.resolve(items);
+	}
 
 	return defer.promise;
 };
