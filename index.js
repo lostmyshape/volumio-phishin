@@ -530,15 +530,31 @@ ControllerPhishin.prototype.clearAddPlayTrack = function(track) {
 	var self = this;
 	self.commandRouter.pushConsoleMessage('[' + Date.now() + '] ' + 'ControllerPhishin::clearAddPlayTrack');
 
-	self.commandRouter.logger.info(JSON.stringify(track));
+	var safeUri = track.uri.replace(/"/g,'\\"');
 
-	return self.sendSpopCommand('uplay', [track.uri]);
+	return self.mpdPlugin.sendMpdCommand('stop',[])
+		.then(function()
+		{
+			return self.mpdPlugin.sendMpdCommand('clear',[]);
+		})
+		.then(function()
+		{
+				return self.mpdPlugin.sendMpdCommand('load "'+safeUri+'"',[]);
+		})
+		.fail(function (e) {
+				return self.mpdPlugin.sendMpdCommand('add "'+safeUri+'"',[]);
+		})
+		.then(function()
+		{
+				self.commandRouter.stateMachine.setConsumeUpdateService('mpd');
+				return self.mpdPlugin.sendMpdCommand('play',[]);
+		});
 };
 
 ControllerPhishin.prototype.seek = function (timepos) {
-    this.commandRouter.pushConsoleMessage('[' + Date.now() + '] ' + 'ControllerPhishin::seek to ' + timepos);
-
-    return this.sendSpopCommand('seek '+timepos, []);
+	var self = this;
+  this.commandRouter.pushConsoleMessage('[' + Date.now() + '] ' + 'ControllerPhishin::seek to ' + timepos);
+	return self.mpdPlugin.seek(timepos);
 };
 
 // Stop
@@ -546,15 +562,54 @@ ControllerPhishin.prototype.stop = function() {
 	var self = this;
 	self.commandRouter.pushConsoleMessage('[' + Date.now() + '] ' + 'ControllerPhishin::stop');
 
+	return self.mpdPlugin.sendMpdCommand('stop',[]);
 
 };
 
-// Spop pause
+// Pause
 ControllerPhishin.prototype.pause = function() {
 	var self = this;
 	self.commandRouter.pushConsoleMessage('[' + Date.now() + '] ' + 'ControllerPhishin::pause');
+	self.commandRouter.stateMachine.setConsumeUpdateService('mpd');
 
+	return self.mpdPlugin.sendMpdCommand('pause',[]);
 
+};
+
+// Resume
+ControllerPhishin.prototype.resume = function() {
+    var self = this;
+    self.commandRouter.pushConsoleMessage('[' + Date.now() + '] ' + 'ControllerPhishin::resume');
+		self.commandRouter.stateMachine.setConsumeUpdateService('mpd');
+
+    return self.mpdPlugin.sendMpdCommand('play',[]);
+};
+
+// Next
+ControllerPhishin.prototype.next = function () {
+	this.commandRouter.pushConsoleMessage('ControllerPhishin::next');
+	return this.sendMpdCommand('next', []);
+};
+
+// Previous
+ControllerPhishin.prototype.previous = function () {
+	this.commandRouter.pushConsoleMessage('ControllerPhishin::previous');
+	return this.sendMpdCommand('previous', []);
+};
+
+// Random
+ControllerPhishin.prototype.random = function (randomcmd) {
+	var string = randomcmd ? 1 : 0;
+	self.commandRouter.stateMachine.setConsumeUpdateService('mpd');
+
+	return this.sendMpdCommand('random', [string])
+};
+
+// Repeat
+ControllerPhishin.prototype.repeat = function (repeatcmd) {
+	var string = repeatcmd ? 1 : 0;
+	self.commandRouter.stateMachine.setConsumeUpdateService('mpd');
+	return this.sendMpdCommand('repeat', [string]);
 };
 
 // Get state
