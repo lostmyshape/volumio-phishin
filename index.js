@@ -605,8 +605,7 @@ ControllerPhishin.prototype.getShowTracks = function(id, sendList) {
 					"artist": "Phish",
 					"album": showTitle,
 					"icon": (sendList ? "fa fa-music" : ""),
-					//"albumart": "/albumart?sourceicon=music_service/volumio_phishin/ph-cover.png",
-					"albumart": "/albumart?path=music_service/volumio_phishin/ph-cover.png",
+					"albumart": "/albumart?sourceicon=music_service/volumio_phishin/ph-cover.png",
 					"uri": (sendList ? "phishin/track/" + track.id +"?showTitle=" + showTitle : track.mp3),
 					"duration": Math.trunc(track.duration / 1000)
 				});
@@ -644,8 +643,7 @@ ControllerPhishin.prototype.getTrack = function(id) {
 				"artist": "Phish",
 				"album": showTitle,
 				"show_id": res.body.data.show_id,
-				//"albumart": "/albumart?sourceicon=music_service/volumio_phishin/ph-cover.png",
-				"albumart": "/albumart?path=music_service/volumio_phishin/ph-cover.png",
+				"albumart": "/albumart?sourceicon=music_service/volumio_phishin/ph-cover.png",
 				"uri": res.body.data.mp3,
 				"duration": Math.trunc(res.body.data.duration / 1000)
 			}];
@@ -747,73 +745,7 @@ ControllerPhishin.prototype.resume = function() {
   });
 
 }
-/*
-// Next
-ControllerPhishin.prototype.next = function () {
-	var self = this;
-	this.commandRouter.pushConsoleMessage('[' + Date.now() + '] ' + 'ControllerPhishin::next');
-	return self.mpdPlugin.sendMpdCommand('next', []);
-}
 
-// Previous
-ControllerPhishin.prototype.previous = function () {
-	var self = this;
-	this.commandRouter.pushConsoleMessage('[' + Date.now() + '] ' + 'ControllerPhishin::previous');
-	return self.mpdPlugin.sendMpdCommand('previous', []);
-}
-
-// Random
-ControllerPhishin.prototype.random = function () {
-	var self = this;
-	var string = randomcmd ? 1 : 0;
-	self.commandRouter.stateMachine.setConsumeUpdateService('mpd');
-	this.commandRouter.pushConsoleMessage('[' + Date.now() + '] ' + 'ControllerPhishin::random toggle');
-
-	return self.mpdPlugin.sendMpdCommand('random', [string]);
-}
-
-// Repeat
-ControllerPhishin.prototype.repeat = function (repeatcmd) {
-	var self = this;
-	var string = repeatcmd ? 1 : 0;
-	self.commandRouter.stateMachine.setConsumeUpdateService('mpd');
-	this.commandRouter.pushConsoleMessage('[' + Date.now() + '] ' + 'ControllerPhishin::repead toggle');
-
-	return self.mpdPlugin.sendMpdCommand('repeat', [string]);
-}
-
-// Next
-ControllerPhishin.prototype.next = function () {
-	this.commandRouter.pushConsoleMessage('ControllerPhishin::next');
-	return this.sendMpdCommand('next', []);
-};
-
-// Previous
-ControllerPhishin.prototype.previous = function () {
-	this.commandRouter.pushConsoleMessage('ControllerPhishin::previous');
-	return this.sendMpdCommand('previous', []);
-};
-
-// Random
-ControllerPhishin.prototype.random = function (randomcmd) {
-	var self = this;
-	var string = randomcmd ? 1 : 0;
-	self.commandRouter.stateMachine.setConsumeUpdateService('mpd');
-	this.commandRouter.pushConsoleMessage('ControllerPhishin::random toggle');
-
-	return this.sendMpdCommand('random', [string])
-};
-
-// Repeat
-ControllerPhishin.prototype.repeat = function (repeatcmd) {
-	var self = this;
-	var string = repeatcmd ? 1 : 0;
-	self.commandRouter.stateMachine.setConsumeUpdateService('mpd');
-	this.commandRouter.pushConsoleMessage('ControllerPhishin::repeat toggle');
-
-	return this.sendMpdCommand('repeat', [string]);
-};
-*/
 // Get state
 ControllerPhishin.prototype.getState = function() {
 	var self = this;
@@ -919,26 +851,151 @@ ControllerPhishin.prototype.search = function (query) {
 	var self=this;
 	var defer=libQ.defer();
 
-	// Mandatory, search. You can divide the search in sections using following functions
+	var searchUri = phApiBaseUrl + 'search/' + encodeURIComponent(query.value) + '.json';
+
+	unirest.get(searchUri).end( function(res){
+		if (res.error){
+			defer.reject(new Error('An error occurred while querying Phish.in.'));
+		}
+		else {
+			// Get shows, songs, venues, and tours
+			var list = [];
+			// Get shows
+			if((res.body.data.hasOwnProperty('show') && res.body.data.show) || (res.body.data.hasOwnProperty('other_shows') && res.body.data.other_shows)) {
+				var showlist = [];
+				if(res.body.data.hasOwnProperty('show') && res.body.data.show) {
+					var showVenue = res.body.data.show.venue_name;
+					var showCity = res.body.data.show.location;
+					var d = new Date(res.body.data.show.date);
+					var months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+					var showDate = months[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();
+					var showUri = 'phishin/shows/'+  res.body.data.show.id;
+
+					var exactShow = {
+						"service": self.serviceName,
+						"type": "folder",
+						"title": showDate + ' ' + showVenue + ', ' + showCity,
+						"artist": "",
+						"album": "",
+						"icon": "fa fa-headphones",
+						"uri": showUri
+					};
+					showlist.push(exactShow);
+				}
+				if(res.body.data.hasOwnProperty('other_shows') && res.body.data.other_shows) {
+					if(res.body.data.other_shows.length > 0) {
+						var otherShows = self._searchShows(res);
+						for (var i in otherShows) {
+							showlist.push(otherShows[i]);
+						}
+					}
+				}
+				list.push({
+					'type':'title',
+					'title':'Phish.in Shows',
+					'availableListViews': ["list"],
+					'items': showlist
+				});
+			}
+			// Get songs
+			if(res.body.data.hasOwnProperty('songs') && res.body.data.songs) {
+					if(res.body.data.songs.length > 0) {
+					var songlist = [];
+					var songs = self._searchSongs(res);
+					for (var i in songs) {
+						songlist.push(songs[i]);
+					}
+					list.push({
+						'type':'title',
+						'title':'Phish.in Songs',
+						'availableListViews': ["list"],
+						'items': songlist
+					});
+				}
+			}
+			// Get venues
+			if(res.body.data.hasOwnProperty('venues') && res.body.data.venues) {
+				if(res.body.data.venues.length > 0){
+					var venuelist = [];
+					var venues = self._searchVenues(res);
+					for (var i in venues) {
+						songlist.push(venues[i]);
+					}
+					list.push({
+						'type':'title',
+						'title':'Phish.in Venues',
+						'availableListViews': ["list"],
+						'items': venuelist
+					});
+				}
+			}
+			// Get tours
+			if(res.body.data.hasOwnProperty('tours') && res.body.data.tours) {
+				if(res.body.data.tours.length > 0) {
+					var tourlist = [];
+					var tours = self._searchTours(res);
+					for (var i in tours) {
+						songlist.push(tours[i]);
+					}
+					list.push({
+						'type':'title',
+						'title':'Phish.in Tours',
+						'availableListViews': ["list"],
+						'items': tourlist
+					});
+				}
+			}
+			defer.resolve(list);
+		}
+	});
 
 	return defer.promise;
 };
 
-ControllerPhishin.prototype._searchArtists = function (results) {
+ControllerPhishin.prototype._searchShows = function (res) {
+	var self=this;
+	var list = [];
+	for (var i in res.body.data.other_shows){
+		var showVenue = res.body.data.other_shows[i].venue_name;
+		var showCity = res.body.data.other_shows[i].location;
+		var d = new Date(res.body.data.other_shows[i].date);
+		var months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+		var showDate = months[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();
+		var showUri = 'phishin/shows/'+  res.body.data.other_shows[i].id;
 
+		var item = {
+			"service": self.serviceName,
+			"type": "folder",
+			"title": showDate + ' ' + showVenue + ', ' + showCity,
+			"artist": "",
+			"album": "",
+			"icon": "fa fa-headphones",
+			"uri": showUri
+		};
+		list.push(item);
+	}
+	return list;
 };
 
-ControllerPhishin.prototype._searchAlbums = function (results) {
+ControllerPhishin.prototype._searchSongs = function (res) {
+	var self=this;
+	var list = [];
 
+	return list;
 };
 
-ControllerPhishin.prototype._searchPlaylists = function (results) {
+ControllerPhishin.prototype._searchVenues = function (res) {
+	var self=this;
+	var list = [];
 
-
+	return list;
 };
 
-ControllerPhishin.prototype._searchTracks = function (results) {
+ControllerPhishin.prototype._searchTours = function (results) {
+	var self=this;
+	var list = [];
 
+	return list;
 };
 
 ControllerPhishin.prototype.loadPhishinI18nStrings = function () {
