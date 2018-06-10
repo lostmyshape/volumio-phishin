@@ -211,6 +211,16 @@ ControllerPhishin.prototype.handleBrowseUri = function (curUri) {
 				//get random show tracks
 				response = self.listShowTracks(curUri);
 			}
+
+			else if (curUri.startsWith('phishin/songs')) {
+				//get list of shows with this songs
+				response = self.listSongShows(curUri);
+			}
+
+			else if (curUri.startsWith('phishin/venues')) {
+				//get list of shows with this songs
+				response = self.listVenueShows(curUri);
+			}
 		}
     return response;
 };
@@ -502,6 +512,22 @@ ControllerPhishin.prototype.listTodayShows = function(curUri) {
 			defer.resolve(response);
 		}
 	});
+
+	return defer.promise;
+}
+
+//list shows with the song picked in them
+ControllerPhishin.prototype.listSongShows = function(curUri) {
+	var self = this;
+	var defer = libQ.defer();
+
+	return defer.promise;
+}
+
+//list shows with the venue picked in them
+ControllerPhishin.prototype.listVenueShows = function(curUri) {
+	var self = this;
+	var defer = libQ.defer();
 
 	return defer.promise;
 }
@@ -850,8 +876,27 @@ ControllerPhishin.prototype.getAlbumArt = function (data, path) {
 ControllerPhishin.prototype.search = function (query) {
 	var self=this;
 	var defer=libQ.defer();
+	var dateMatch =/^(0?[1-9]|1[012])[\/\-](0?[1-9]|[12][0-9]|3[01])[\/\-](((19)?[89][0-9])|((20)?[0-5][0-9]))$/;
+	var searchCrit = query.value;
+	var matchArray = dateMatch.exec(searchCrit);
 
-	var searchUri = phApiBaseUrl + 'search/' + encodeURIComponent(query.value) + '.json';
+	var year = '';
+	if (matchArray != null){
+  	if(matchArray[4] && matchArray[4] < 100){
+    	year = "19" + matchArray[3];
+  	}
+  	else if(matchArray[6] && matchArray[6] < 100) {
+    	year = "20" + matchArray[3];
+  	}
+  	else {
+    	year = matchArray[3];
+  	}
+  	searchCrit = year + '-' + matchArray[1] + '-' + matchArray[2];
+	}
+
+	self.logger.info("query.value: " + query.value);
+	self.logger.info("searchCrit: " + searchCrit);
+	var searchUri = phApiBaseUrl + 'search/' + encodeURIComponent(searchCrit) + '.json';
 
 	unirest.get(searchUri).end( function(res){
 		if (res.error){
@@ -901,7 +946,8 @@ ControllerPhishin.prototype.search = function (query) {
 			if(res.body.data.hasOwnProperty('songs') && res.body.data.songs) {
 					if(res.body.data.songs.length > 0) {
 					var songlist = [];
-					var songs = self._searchSongs(res);
+					var songs =	self._searchSongs(res);
+					console.log(songs);
 					for (var i in songs) {
 						songlist.push(songs[i]);
 					}
@@ -919,7 +965,7 @@ ControllerPhishin.prototype.search = function (query) {
 					var venuelist = [];
 					var venues = self._searchVenues(res);
 					for (var i in venues) {
-						songlist.push(venues[i]);
+						venuelist.push(venues[i]);
 					}
 					list.push({
 						'type':'title',
@@ -935,7 +981,7 @@ ControllerPhishin.prototype.search = function (query) {
 					var tourlist = [];
 					var tours = self._searchTours(res);
 					for (var i in tours) {
-						songlist.push(tours[i]);
+						tourlist.push(tours[i]);
 					}
 					list.push({
 						'type':'title',
@@ -976,11 +1022,85 @@ ControllerPhishin.prototype._searchShows = function (res) {
 	}
 	return list;
 };
-
+/*
 ControllerPhishin.prototype._searchSongs = function (res) {
 	var self=this;
-	var list = [];
+	var songIdList = [];
+	var promises = [];
+	for (var i in res.body.data.songs) {
+		if (res.body.data.songs[i].alias_for) {
+			songIdList.push(res.body.data.songs[i].alias_for);
+		}
+		else {
+			songIdList.push(res.body.data.songs[i].id);
+		}
+	}
+	for (var i in songIdList) {
+		promises.push(self.getSongInfo(songIdList[i]));
+	}
+	var test = libQ.all(promises)
+		.then(function(items){
+			var list = [];
+			for (var i in items){
+				list.push(items[i]);
+			}
+			return list;
+		});
+	console.log(test);
+	console.log(test._data);
+	console.log(test._child);
+}
 
+ControllerPhishin.prototype.getSongInfo = function (songId) {
+	var self=this;
+	var defer=libQ.defer();
+
+	var songUri = phApiBaseUrl + 'songs/' + songId + '.json';
+
+	unirest.get(songUri).end( function(resSong){
+		if (resSong.error){
+			defer.reject(new Error('An error occurred while querying Phish.in.'));
+		}
+		else {
+			var item = {
+				"service": self.serviceName,
+				"type": "item-no-menu",
+				"title": resSong.body.data.title,
+				"artist": "",
+				"album": "",
+				"icon": "fa fa-headphones",
+				"uri": "phishin/song/" + songId
+			};
+			defer.resolve(item);
+		}
+	});
+	return defer.promise;
+}
+*/
+ControllerPhishin.prototype._searchSongs = function (res) {
+	//maybe instead query for song id list, then push new item for each query?
+	var self=this;
+	var list = [];
+	var songId;
+	for (var i in res.body.data.songs) {
+		if (res.body.data.songs[i].alias_for) {
+			songId = res.body.data.songs[i].alias_for;
+		}
+		else {
+			songId = res.body.data.songs[i].id;
+		}
+
+		var item = {
+			"service": self.serviceName,
+			"type": "item-no-menu",
+			"title": res.body.data.songs[i].title,
+			"artist": "",
+			"album": "",
+			"icon": "fa fa-headphones",
+			"uri": "phishin/song/" + songId
+		};
+		list.push(item);
+	}
 	return list;
 };
 
@@ -988,12 +1108,39 @@ ControllerPhishin.prototype._searchVenues = function (res) {
 	var self=this;
 	var list = [];
 
+	for (var i in res.body.data.venues) {
+
+		var item = {
+			"service": self.serviceName,
+			"type": "item-no-menu",
+			"title": res.body.data.venues[i].name + ", " + res.body.data.venues[i].location,
+			"artist": "",
+			"album": "",
+			"icon": "fa fa-headphones",
+			"uri": "phishin/venues/" + res.body.data.venues[i].id
+		}
+		list.push(item);
+	}
+
 	return list;
 };
 
-ControllerPhishin.prototype._searchTours = function (results) {
+ControllerPhishin.prototype._searchTours = function (res) {
 	var self=this;
 	var list = [];
+
+	for (var i in res.body.data.tours) {
+		var item = {
+			"service": self.serviceName,
+			"type": "item-no-menu",
+			"title": res.body.data.tours[i].name,
+			"artist": "",
+			"album": "",
+			"icon": "fa fa-headphones",
+			"uri": "phishin/tours/" + res.body.data.tours[i].id
+		}
+		list.push(item);
+	}
 
 	return list;
 };
