@@ -249,7 +249,8 @@ ControllerPhishin.prototype.listYears = function (curUri) {
 
 	unirest.get(uri).end( function(res){
 		if (res.error){
-			defer.reject(new Error('An error occurred while querying Phish.in.'));
+			defer.reject(new Error(self.getPhishinI18nString('QUERY_ERROR')));
+			self.commandRouter.pushToastMessage('error', self.getPhishinI18nString('PHISHIN_QUERY'), self.getPhishinI18nString('QUERY_ERROR'));
 		}
 		else {
 			for (var i = 0; i < res.body.data.length; i++){
@@ -299,7 +300,8 @@ ControllerPhishin.prototype.listTours = function (curUri) {
 
 	unirest.get(uri).end( function(res){
 		if (res.error){
-			defer.reject(new Error('An error occurred while querying Phish.in.'));
+			defer.reject(new Error(self.getPhishinI18nString('QUERY_ERROR')));
+			self.commandRouter.pushToastMessage('error', self.getPhishinI18nString('PHISHIN_QUERY'), self.getPhishinI18nString('QUERY_ERROR'));
 		}
 		else {
 			for (var i = 0; i < res.body.data.length; i++){
@@ -352,7 +354,8 @@ ControllerPhishin.prototype.listYearShows = function(curUri) {
 
 	unirest.get(uri).end( function(res){
 		if (res.error){
-			defer.reject(new Error('An error occurred while querying Phish.in.'));
+			defer.reject(new Error(self.getPhishinI18nString('QUERY_ERROR')));
+			self.commandRouter.pushToastMessage('error', self.getPhishinI18nString('PHISHIN_QUERY'), self.getPhishinI18nString('QUERY_ERROR'));
 		}
 		else {
 			var dataLength = res.body.data.length;
@@ -409,7 +412,8 @@ ControllerPhishin.prototype.listTourShows = function(curUri) {
 
 	unirest.get(uri).end( function(res){
 		if (res.error){
-			defer.reject(new Error('An error occurred while querying Phish.in.'));
+			defer.reject(new Error(self.getPhishinI18nString('QUERY_ERROR')));
+			self.commandRouter.pushToastMessage('error', self.getPhishinI18nString('PHISHIN_QUERY'), self.getPhishinI18nString('QUERY_ERROR'));
 		}
 		else {
 			var dataLength = res.body.data.shows.length;
@@ -469,7 +473,8 @@ ControllerPhishin.prototype.listTodayShows = function(curUri) {
 
 	unirest.get(uri).end( function(res){
 		if (res.error){
-			defer.reject(new Error('An error occurred while querying Phish.in.'));
+			defer.reject(new Error(self.getPhishinI18nString('QUERY_ERROR')));
+			self.commandRouter.pushToastMessage('error', self.getPhishinI18nString('PHISHIN_QUERY'), self.getPhishinI18nString('QUERY_ERROR'));
 		}
 		else {
 			var dataLength = res.body.data.length;
@@ -521,8 +526,119 @@ ControllerPhishin.prototype.listSongShows = function(curUri) {
 	var self = this;
 	var defer = libQ.defer();
 
+	var songReq = curUri.split('/')[2];
+
+	return libQ.all([self.getSongShows(songReq), curUri])
+		.fail(function (e) {
+    	self.logger.debug("Failed to list song shows: " + e);
+  	})
+		.spread(function(showIds, prevUri){
+			var promises = [];
+			var songTitle = showIds.shift();
+			for (var i in showIds) {
+				promises.push(self.getShowInfo(showIds[i], prevUri));
+			}
+			return libQ.all(promises)
+				.then(function(items){
+					var itemList = [];
+					for (var i in items){
+						itemList.push(items[i]);
+					}
+					function compareYears(a, b) {
+						const dateA = a.sortdate;
+						const dateB = b.sortdate;
+
+						let comparison = 0;
+						if (dateA > dateB) {
+							comparison = 1;
+						}
+						else if (dateA < dateB) {
+							comparison = -1;
+						}
+						return comparison;
+					}
+					itemList = itemList.sort(compareYears);
+					var response = {
+						"navigation": {
+							"lists": [
+								{
+									'type':'title',
+									'title':self.getPhishinI18nString('SHOWS_CONTAINING') + songTitle,
+									"availableListViews":["list"],
+									"items":itemList
+								}
+							],
+							"prev":{
+								"uri":"phishin"
+							}
+						}
+					};
+					return response;
+				});
+		});
+}
+
+ControllerPhishin.prototype.getSongShows = function (songId){
+	var self = this;
+	var defer = libQ.defer();
+
+	var uri = phApiBaseUrl + 'songs/' + songId + '.json';
+	var showIdList = [];
+
+	unirest.get(uri).end( function(res){
+		if (res.error){
+			defer.reject(new Error(self.getPhishinI18nString('QUERY_ERROR')));
+			self.commandRouter.pushToastMessage('error', self.getPhishinI18nString('PHISHIN_QUERY'), self.getPhishinI18nString('QUERY_ERROR'));
+		}
+		else {
+			self.commandRouter.pushToastMessage('info', self.getPhishinI18nString('PHISHIN_QUERY'), self.getPhishinI18nString('RETREIVING_SHOWS') + ' ' + res.body.data.title + '. ' + self.getPhishinI18nString('TAKE_AWHILE'));
+			showIdList.push(res.body.data.title);
+			var dataLength = res.body.data.tracks.length;
+			for (var i = 0; i < dataLength; i++) {
+				showIdList.push(res.body.data.tracks[i].show_id);
+			}
+			defer.resolve(showIdList);
+		}
+	});
+
 	return defer.promise;
 }
+
+ControllerPhishin.prototype.getShowInfo = function (showId, curUri) {
+	var self=this;
+	var defer=libQ.defer();
+
+	var showUri = phApiBaseUrl + 'shows/' + showId + '.json';
+
+	unirest.get(showUri).end( function(resShow){
+		var months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+		if (resShow.error){
+			defer.reject(new Error(self.getPhishinI18nString('QUERY_ERROR')));
+			self.commandRouter.pushToastMessage('error', self.getPhishinI18nString('PHISHIN_QUERY'), self.getPhishinI18nString('QUERY_ERROR'));
+		}
+		else {
+			var d = new Date(resShow.body.data.date);
+			var showDate = months[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();
+			var showVenue = resShow.body.data.venue.name;
+			var showCity = resShow.body.data.venue.location;
+			var showUri = 'phishin/shows/'+  resShow.body.data.id + '?prevUri=' + curUri;
+			//self.logger.info(showDate+' '+showVenue+' '+showCity+', showUri: '+ showUri);
+			var showFolder = {
+				"service": self.serviceName,
+				"type": "folder",
+				"title": showDate + ' ' + showVenue + ', ' + showCity,
+				"artist": "",
+				"album": "",
+				"icon": "fa fa-headphones",
+				"uri": showUri,
+				"sortdate": d
+			};
+			defer.resolve(showFolder);
+		}
+	});
+	return defer.promise;
+}
+
 
 //list shows with the venue picked in them
 ControllerPhishin.prototype.listVenueShows = function(curUri) {
@@ -604,7 +720,8 @@ ControllerPhishin.prototype.getShowTracks = function(id, sendList) {
 
 	unirest.get(uri).end( function(res){
 		if (res.error){
-			defer.reject(new Error('An error occurred while querying Phish.in.'));
+			defer.reject(new Error(self.getPhishinI18nString('QUERY_ERROR')));
+			self.commandRouter.pushToastMessage('error', self.getPhishinI18nString('PHISHIN_QUERY'), self.getPhishinI18nString('QUERY_ERROR'));
 		}
 		else {
 			var response = [];
@@ -652,7 +769,8 @@ ControllerPhishin.prototype.getTrack = function(id) {
 
 	unirest.get(uri).end( function(res){
 		if (res.error){
-			defer.reject(new Error('An error occurred while querying Phish.in.'));
+			defer.reject(new Error(self.getPhishinI18nString('QUERY_ERROR')));
+			self.commandRouter.pushToastMessage('error', self.getPhishinI18nString('PHISHIN_QUERY'), self.getPhishinI18nString('QUERY_ERROR'));
 		}
 		else {
 			//create new promise, resolve then send to new function to add show title
@@ -874,6 +992,8 @@ ControllerPhishin.prototype.getAlbumArt = function (data, path) {
 
 
 ControllerPhishin.prototype.search = function (query) {
+//TODO: How to make this gracefully fail -- when Phish.in server was down,
+//search would fail and no results from other plugins would show
 	var self=this;
 	var defer=libQ.defer();
 	var dateMatch =/^(0?[1-9]|1[012])[\/\-](0?[1-9]|[12][0-9]|3[01])[\/\-](((19)?[89][0-9])|((20)?[0-5][0-9]))$/;
@@ -900,7 +1020,8 @@ ControllerPhishin.prototype.search = function (query) {
 
 	unirest.get(searchUri).end( function(res){
 		if (res.error){
-			defer.reject(new Error('An error occurred while querying Phish.in.'));
+			defer.reject(new Error(self.getPhishinI18nString('QUERY_ERROR')));
+			self.commandRouter.pushToastMessage('error', self.getPhishinI18nString('PHISHIN_QUERY'), self.getPhishinI18nString('QUERY_ERROR'));
 		}
 		else {
 			// Get shows, songs, venues, and tours
@@ -1059,7 +1180,8 @@ ControllerPhishin.prototype.getSongInfo = function (songId) {
 
 	unirest.get(songUri).end( function(resSong){
 		if (resSong.error){
-			defer.reject(new Error('An error occurred while querying Phish.in.'));
+			defer.reject(new Error(self.getPhishinI18nString('QUERY_ERROR')));
+			self.commandRouter.pushToastMessage('error', self.getPhishinI18nString('PHISHIN_QUERY'), self.getPhishinI18nString('QUERY_ERROR'));
 		}
 		else {
 			var item = {
@@ -1097,7 +1219,7 @@ ControllerPhishin.prototype._searchSongs = function (res) {
 			"artist": "",
 			"album": "",
 			"icon": "fa fa-headphones",
-			"uri": "phishin/song/" + songId
+			"uri": "phishin/songs/" + songId
 		};
 		list.push(item);
 	}

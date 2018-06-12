@@ -6,5 +6,11 @@
   "TOURS": "Tours",
   "SHOWS_LWR": "shows",
   "ON_THIS_DAY": "On This Day",
-  "RANDOM_SHOW": "Random Show"
+  "NO_SHOW_TODAY": "There are no shows on this date",
+  "RANDOM_SHOW": "Random Show",
+  "PHISHIN_QUERY": "Querying Phish.in Server",
+  "QUERY_ERROR": "An error occurred while querying Phish.in.",
+  "SHOWS_CONTAINING": "Shows containing: ",
+  "RETREIVING_SHOWS": "Please be patient - retreiving shows containing",
+  "TAKE_AWHILE": "This might take a while."
 }
