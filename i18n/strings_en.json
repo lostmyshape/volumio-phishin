@@ -10,7 +10,8 @@
   "RANDOM_SHOW": "Random Show",
   "PHISHIN_QUERY": "Querying Phish.in Server",
   "QUERY_ERROR": "An error occurred while querying Phish.in.",
-  "SHOWS_CONTAINING": "Shows containing: ",
-  "RETREIVING_SHOWS": "Please be patient - retreiving shows containing",
+  "SHOWS_CONTAINING": "shows containing",
+  "RETREIVING": "Please be patient - retreiving",
+  "SHOWS_PLAYEDAT": "shows played at",
   "TAKE_AWHILE": "This might take a while."
 }

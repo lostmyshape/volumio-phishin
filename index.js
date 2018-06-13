@@ -532,11 +532,10 @@ ControllerPhishin.prototype.listSongShows = function(curUri) {
 		.fail(function (e) {
     	self.logger.debug("Failed to list song shows: " + e);
   	})
-		.spread(function(showIds, prevUri){
+		.spread(function(showIdOb, prevUri){
 			var promises = [];
-			var songTitle = showIds.shift();
-			for (var i in showIds) {
-				promises.push(self.getShowInfo(showIds[i], prevUri));
+			for (var i in showIdOb.showIdList) {
+				promises.push(self.getShowInfo(showIdOb.showIdList[i], prevUri));
 			}
 			return libQ.all(promises)
 				.then(function(items){
@@ -563,7 +562,7 @@ ControllerPhishin.prototype.listSongShows = function(curUri) {
 							"lists": [
 								{
 									'type':'title',
-									'title':self.getPhishinI18nString('SHOWS_CONTAINING') + songTitle,
+									'title':showIdOb.showIdList.length + ' ' + self.getPhishinI18nString('SHOWS_CONTAINING') + ': ' + showIdOb.songTitle,
 									"availableListViews":["list"],
 									"items":itemList
 								}
@@ -583,7 +582,9 @@ ControllerPhishin.prototype.getSongShows = function (songId){
 	var defer = libQ.defer();
 
 	var uri = phApiBaseUrl + 'songs/' + songId + '.json';
-	var showIdList = [];
+	var showIdOb = {
+		"showIdList":[]
+	}
 
 	unirest.get(uri).end( function(res){
 		if (res.error){
@@ -591,13 +592,13 @@ ControllerPhishin.prototype.getSongShows = function (songId){
 			self.commandRouter.pushToastMessage('error', self.getPhishinI18nString('PHISHIN_QUERY'), self.getPhishinI18nString('QUERY_ERROR'));
 		}
 		else {
-			self.commandRouter.pushToastMessage('info', self.getPhishinI18nString('PHISHIN_QUERY'), self.getPhishinI18nString('RETREIVING_SHOWS') + ' ' + res.body.data.title + '. ' + self.getPhishinI18nString('TAKE_AWHILE'));
-			showIdList.push(res.body.data.title);
+			self.commandRouter.pushToastMessage('info', self.getPhishinI18nString('PHISHIN_QUERY'), self.getPhishinI18nString('RETREIVING') + ' ' + self.getPhishinI18nString('SHOWS_CONTAINING') + ' ' + res.body.data.title + '. ' + self.getPhishinI18nString('TAKE_AWHILE'));
+			showIdOb.songTitle = res.body.data.title;
 			var dataLength = res.body.data.tracks.length;
 			for (var i = 0; i < dataLength; i++) {
-				showIdList.push(res.body.data.tracks[i].show_id);
+				showIdOb.showIdList.push(res.body.data.tracks[i].show_id);
 			}
-			defer.resolve(showIdList);
+			defer.resolve(showIdOb);
 		}
 	});
 
@@ -639,14 +640,86 @@ ControllerPhishin.prototype.getShowInfo = function (showId, curUri) {
 	return defer.promise;
 }
 
-
 //list shows with the venue picked in them
 ControllerPhishin.prototype.listVenueShows = function(curUri) {
 	var self = this;
 	var defer = libQ.defer();
 
+	var venueReq = curUri.split('/')[2];
+
+	return libQ.all([self.getVenueShows(venueReq), curUri])
+		.fail(function (e) {
+    	self.logger.debug("Failed to list song shows: " + e);
+  	})
+		.spread(function(showIdOb, prevUri){
+			var promises = [];
+			for (var i in showIdOb.showIdList) {
+				promises.push(self.getShowInfo(showIdOb.showIdList[i], prevUri));
+			}
+			return libQ.all(promises)
+				.then(function(items){
+					var itemList = [];
+					for (var i in items){
+						itemList.push(items[i]);
+					}
+					function compareYears(a, b) {
+						const dateA = a.sortdate;
+						const dateB = b.sortdate;
+
+						let comparison = 0;
+						if (dateA > dateB) {
+							comparison = 1;
+						}
+						else if (dateA < dateB) {
+							comparison = -1;
+						}
+						return comparison;
+					}
+					itemList = itemList.sort(compareYears);
+					var response = {
+						"navigation": {
+							"lists": [
+								{
+									'type':'title',
+									'title':showIdOb.showIdList.length + ' ' + self.getPhishinI18nString('SHOWS_PLAYEDAT') + ': ' + showIdOb.venueName,
+									"availableListViews":["list"],
+									"items":itemList
+								}
+							],
+							"prev":{
+								"uri":"phishin"
+							}
+						}
+					};
+					return response;
+				});
+		});
+}
+
+ControllerPhishin.prototype.getVenueShows = function (venueId){
+	var self = this;
+	var defer = libQ.defer();
+
+	var uri = phApiBaseUrl + 'venues/' + venueId + '.json';
+	var showIdOb = new Object();
+
+	unirest.get(uri).end( function(res){
+		if (res.error){
+			defer.reject(new Error(self.getPhishinI18nString('QUERY_ERROR')));
+			self.commandRouter.pushToastMessage('error', self.getPhishinI18nString('PHISHIN_QUERY'), self.getPhishinI18nString('QUERY_ERROR'));
+		}
+		else {
+			self.commandRouter.pushToastMessage('info', self.getPhishinI18nString('PHISHIN_QUERY'), self.getPhishinI18nString('RETREIVING') + ' ' + self.getPhishinI18nString('SHOWS_PLAYEDAT') + ' ' + res.body.data.title + '. ' + self.getPhishinI18nString('TAKE_AWHILE'));
+			showIdOb.venueName = res.body.data.name + ', ' + res.body.data.location;
+			showIdOb.showIdList = res.body.data.show_ids;
+		}
+		console.log(showIdOb);
+		defer.resolve(showIdOb);
+	});
+
 	return defer.promise;
 }
+
 
 //list tracks when show picked
 ControllerPhishin.prototype.listShowTracks = function(curUri) {
