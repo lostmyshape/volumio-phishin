@@ -19,12 +19,51 @@ function ControllerPhishin(context) {
 	this.logger = this.context.logger;
 	this.configManager = this.context.configManager;
 
+	self.resetHistory();
+}
+
+ControllerPhishin.prototype.resetHistory = function() {
+  var self = this;
+
+  self.uriHistory = [];
+  self.historyIndex = -1;
+}
+
+ControllerPhishin.prototype.historyAdd = function(uri) {
+  var self = this;
+
+  // If the new url is equal to the previous one
+  // this means it's a "Back" action
+  if (self.uriHistory[self.historyIndex - 1] == uri) {
+    self.historyPop();
+  } else {
+    self.uriHistory.push(uri);
+    self.historyIndex++;
+  }
+}
+
+ControllerPhishin.prototype.historyPop = function(uri) {
+  var self = this;
+
+  self.uriHistory.pop();
+  self.historyIndex--;
+}
+
+ControllerPhishin.prototype.getPrevUri = function() {
+  var self = this;
+  var uri;
+
+  if (self.historyIndex >= 0) {
+    uri = self.uriHistory[self.historyIndex - 1];
+  } else {
+    uri = 'phishin';
+  }
+
+  return uri;
 }
 
 
-
-ControllerPhishin.prototype.onVolumioStart = function()
-{
+ControllerPhishin.prototype.onVolumioStart = function() {
 	var self = this;
 	var configFile=this.commandRouter.pluginManager.getConfigurationFile(this.context,'config.json');
 	this.config = new (require('v-conf'))();
@@ -123,11 +162,13 @@ ControllerPhishin.prototype.handleBrowseUri = function (curUri) {
 
 		if (curUri.startsWith('phishin')) {
 			if (curUri == 'phishin') {
+				self.resetHistory();
+				self.historyAdd(curUri);
 				//list root menu
 				response = libQ.resolve({
 					"navigation": {
-					"prev": {
-							"uri": "/"
+					"prev":{
+							"uri": self.getPrevUri()//"/"
 						},
 						"lists": [
 							{
@@ -179,10 +220,12 @@ ControllerPhishin.prototype.handleBrowseUri = function (curUri) {
 			else if (curUri.startsWith('phishin/years')){
 				if (curUri == 'phishin/years') {
 					//list years
+					self.historyAdd(curUri);
 					response = self.listYears(curUri);
 				}
 				else {
 					//list shows from year picked
+					self.historyAdd(curUri);
 					response = self.listYearShows(curUri);
 				}
 			}
@@ -190,35 +233,43 @@ ControllerPhishin.prototype.handleBrowseUri = function (curUri) {
 			else if (curUri.startsWith('phishin/tours')) {
 				if (curUri == 'phishin/tours') {
 					//list tours
+					self.historyAdd(curUri);
 					response = self.listTours(curUri);
 				} else {
 					//list shows from year picked
+					self.historyAdd(curUri);
 					response = self.listTourShows(curUri);
 				}
 			}
 
 			else if (curUri.startsWith('phishin/thisday')) {
 				//get shows from this day
+				self.historyAdd(curUri);
 				response = self.listTodayShows(curUri);
 			}
 
 			else if (curUri.startsWith('phishin/shows')) {
 				//get random show tracks
+				self.historyAdd(curUri);
 				response = self.listShowTracks(curUri);
 			}
 
 			else if (curUri.startsWith('phishin/random')) {
 				//get random show tracks
+				self.historyAdd(curUri);
+				//self.resetHistory();
 				response = self.listShowTracks(curUri);
 			}
 
 			else if (curUri.startsWith('phishin/songs')) {
 				//get list of shows with this songs
+				self.historyAdd(curUri);
 				response = self.listSongShows(curUri);
 			}
 
 			else if (curUri.startsWith('phishin/venues')) {
 				//get list of shows with this songs
+				self.historyAdd(curUri);
 				response = self.listVenueShows(curUri);
 			}
 		}
@@ -230,7 +281,6 @@ ControllerPhishin.prototype.listYears = function (curUri) {
 	var self = this;
 	var defer = libQ.defer();
 	var uri = phApiBaseUrl + 'years.json?include_show_counts=true';
-	//self.logger.info("phURI: "+uri);
 
 	var response = {
 		"navigation": {
@@ -241,22 +291,21 @@ ControllerPhishin.prototype.listYears = function (curUri) {
 				}
 			],
 			"prev":{
-				"uri":"phishin"
+				"uri":self.getPrevUri()
 			}
 		}
 	};
-	//self.logger.info("phURI: "+uri);
 
 	unirest.get(uri).end( function(res){
 		if (res.error){
 			defer.reject(new Error(self.getPhishinI18nString('QUERY_ERROR')));
 			self.commandRouter.pushToastMessage('error', self.getPhishinI18nString('PHISHIN_QUERY'), self.getPhishinI18nString('QUERY_ERROR'));
+			self.historyPop();
 		}
 		else {
 			for (var i = 0; i < res.body.data.length; i++){
 				var name = res.body.data[i].date + ': ' + res.body.data[i].show_count + ' ' + self.getPhishinI18nString('SHOWS_LWR');
 				var yearUri = 'phishin/years/'+ res.body.data[i].date;
-				//self.logger.info('name: '+name+', yearUri: '+yearUri);
 				var yearFolder = {
 					"service": self.serviceName,
 					"type": "item-no-menu",
@@ -268,21 +317,19 @@ ControllerPhishin.prototype.listYears = function (curUri) {
 				};
 				response.navigation.lists[0].items.push(yearFolder);
 			}
-//			self.logger.info("1st item name: "+response.navigation.lists[0].items[0].title);
 
 			defer.resolve(response);
 		}
 	});
 
 	return defer.promise;
-//	return response;
 }
+
 //List tours
 ControllerPhishin.prototype.listTours = function (curUri) {
 	var self = this;
 	var defer = libQ.defer();
 	var uri = phApiBaseUrl + 'tours.json?per_page=10000&sort_attr=starts_on';
-	//self.logger.info("phURI: "+uri);
 
 	var response = {
 		"navigation": {
@@ -293,7 +340,7 @@ ControllerPhishin.prototype.listTours = function (curUri) {
 				}
 			],
 			"prev":{
-				"uri":"phishin"
+				"uri":self.getPrevUri()
 			}
 		}
 	};
@@ -302,12 +349,12 @@ ControllerPhishin.prototype.listTours = function (curUri) {
 		if (res.error){
 			defer.reject(new Error(self.getPhishinI18nString('QUERY_ERROR')));
 			self.commandRouter.pushToastMessage('error', self.getPhishinI18nString('PHISHIN_QUERY'), self.getPhishinI18nString('QUERY_ERROR'));
+			self.historyPop();
 		}
 		else {
 			for (var i = 0; i < res.body.data.length; i++){
 				var name = res.body.data[i].name + ': ' + res.body.data[i].shows_count + ' ' + self.getPhishinI18nString('SHOWS_LWR');
 				var tourUri = 'phishin/tours/'+ res.body.data[i].id;
-				//self.logger.info('name: '+name+', yearTourUri: '+ tourUri);
 				var tourFolder = {
 					"service": self.serviceName,
 					"type": "item-no-menu",
@@ -319,14 +366,12 @@ ControllerPhishin.prototype.listTours = function (curUri) {
 				};
 				response.navigation.lists[0].items.push(tourFolder);
 			}
-//			self.logger.info("1st item name: "+response.navigation.lists[0].items[0].title);
 
 			defer.resolve(response);
 		}
 	});
 
 	return defer.promise;
-//	return response;
 }
 
 //List shows by year chosen
@@ -347,7 +392,7 @@ ControllerPhishin.prototype.listYearShows = function(curUri) {
 				}
 			],
 			"prev":{
-				"uri":"phishin/years"
+				"uri":self.getPrevUri()
 			}
 		}
 	};
@@ -356,6 +401,7 @@ ControllerPhishin.prototype.listYearShows = function(curUri) {
 		if (res.error){
 			defer.reject(new Error(self.getPhishinI18nString('QUERY_ERROR')));
 			self.commandRouter.pushToastMessage('error', self.getPhishinI18nString('PHISHIN_QUERY'), self.getPhishinI18nString('QUERY_ERROR'));
+			self.historyPop();
 		}
 		else {
 			var dataLength = res.body.data.length;
@@ -365,7 +411,6 @@ ControllerPhishin.prototype.listYearShows = function(curUri) {
 				var showVenue = res.body.data[i].venue_name;
 				var showCity = res.body.data[i].location;
 				var showUri = 'phishin/shows/'+  res.body.data[i].id + '?prevUri=' + curUri;
-				//self.logger.info(showDate+' '+showVenue+' '+showCity+', showUri: '+ showUri);
 				var showFolder = {
 					"service": self.serviceName,
 					"type": "folder",
@@ -377,7 +422,6 @@ ControllerPhishin.prototype.listYearShows = function(curUri) {
 				};
 				response.navigation.lists[0].items.push(showFolder);
 			}
-			//self.logger.info("1st item name: "+response.navigation.lists[0].items[0].title);
 
 			defer.resolve(response);
 		}
@@ -394,7 +438,6 @@ ControllerPhishin.prototype.listTourShows = function(curUri) {
 	var tourReq = curUri.split('/')[2];
 	var uri = phApiBaseUrl + 'tours/' + tourReq + '.json';
 	var months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-	//self.logger.info("uri: " + uri);
 
 	var response = {
 		"navigation": {
@@ -405,7 +448,7 @@ ControllerPhishin.prototype.listTourShows = function(curUri) {
 				}
 			],
 			"prev":{
-				"uri":"phishin/tours"
+				"uri":self.getPrevUri()
 			}
 		}
 	};
@@ -414,6 +457,7 @@ ControllerPhishin.prototype.listTourShows = function(curUri) {
 		if (res.error){
 			defer.reject(new Error(self.getPhishinI18nString('QUERY_ERROR')));
 			self.commandRouter.pushToastMessage('error', self.getPhishinI18nString('PHISHIN_QUERY'), self.getPhishinI18nString('QUERY_ERROR'));
+			self.historyPop();
 		}
 		else {
 			var dataLength = res.body.data.shows.length;
@@ -422,8 +466,7 @@ ControllerPhishin.prototype.listTourShows = function(curUri) {
 				var showDate = months[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();
 				var showVenue = res.body.data.shows[i].venue_name;
 				var showCity = res.body.data.shows[i].location;
-				var showUri = 'phishin/shows/'+  res.body.data.shows[i].id + '?prevUri=' + curUri;
-				//self.logger.info(showDate+' '+showVenue+' '+showCity+', showUri: '+ showUri);
+				var showUri = 'phishin/shows/'+  res.body.data.shows[i].id;
 				var showFolder = {
 					"service": self.serviceName,
 					"type": "folder",
@@ -435,7 +478,6 @@ ControllerPhishin.prototype.listTourShows = function(curUri) {
 				};
 				response.navigation.lists[0].items.push(showFolder);
 			}
-			//self.logger.info("1st item name: "+response.navigation.lists[0].items[0].title);
 
 			defer.resolve(response);
 		}
@@ -455,7 +497,6 @@ ControllerPhishin.prototype.listTodayShows = function(curUri) {
 	var todayMonthDay = mm + '-' + dd;
 	var uri = phApiBaseUrl + 'shows-on-day-of-year/' + todayMonthDay + '.json';
 	var months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-	//self.logger.info("uri: " + uri);
 
 	var response = {
 		"navigation": {
@@ -466,7 +507,7 @@ ControllerPhishin.prototype.listTodayShows = function(curUri) {
 				}
 			],
 			"prev":{
-				"uri":"phishin"
+				"uri":self.getPrevUri()
 			}
 		}
 	};
@@ -475,6 +516,7 @@ ControllerPhishin.prototype.listTodayShows = function(curUri) {
 		if (res.error){
 			defer.reject(new Error(self.getPhishinI18nString('QUERY_ERROR')));
 			self.commandRouter.pushToastMessage('error', self.getPhishinI18nString('PHISHIN_QUERY'), self.getPhishinI18nString('QUERY_ERROR'));
+			self.historyPop();
 		}
 		else {
 			var dataLength = res.body.data.length;
@@ -485,7 +527,7 @@ ControllerPhishin.prototype.listTodayShows = function(curUri) {
 					var showDate = months[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();
 					var showVenue = res.body.data[i].venue_name;
 					var showCity = res.body.data[i].location;
-					var showUri = 'phishin/shows/'+  res.body.data[i].id + '?prevUri=' + curUri;
+					var showUri = 'phishin/shows/'+  res.body.data[i].id;
 
 					var showFolder = {
 						"service": self.serviceName,
@@ -494,10 +536,12 @@ ControllerPhishin.prototype.listTodayShows = function(curUri) {
 						"artist": "",
 						"album": "",
 						"icon": "fa fa-headphones",
-						"uri": showUri
+						"uri": showUri,
+						"sortdate": d
 					};
 					response.navigation.lists[0].items.push(showFolder);
 				}
+				response.navigation.lists[0].items.sort(self.compareShowYears);
 			}
 			else {
 				//Add message when no show of day
@@ -528,14 +572,11 @@ ControllerPhishin.prototype.listSongShows = function(curUri) {
 
 	var songReq = curUri.split('/')[2];
 
-	return libQ.all([self.getSongShows(songReq), curUri])
-		.fail(function (e) {
-    	self.logger.debug("Failed to list song shows: " + e);
-  	})
-		.spread(function(showIdOb, prevUri){
+	return libQ.all(self.getSongShows(songReq))
+		.then(function(showIdOb){
 			var promises = [];
-			for (var i in showIdOb.showIdList) {
-				promises.push(self.getShowInfo(showIdOb.showIdList[i], prevUri));
+			for (var i in showIdOb[0].showIdList) {
+				promises.push(self.getShowInfo(showIdOb[0].showIdList[i]));
 			}
 			return libQ.all(promises)
 				.then(function(items){
@@ -543,32 +584,19 @@ ControllerPhishin.prototype.listSongShows = function(curUri) {
 					for (var i in items){
 						itemList.push(items[i]);
 					}
-					function compareYears(a, b) {
-						const dateA = a.sortdate;
-						const dateB = b.sortdate;
-
-						let comparison = 0;
-						if (dateA > dateB) {
-							comparison = 1;
-						}
-						else if (dateA < dateB) {
-							comparison = -1;
-						}
-						return comparison;
-					}
-					itemList = itemList.sort(compareYears);
+					itemList = itemList.sort(self.compareShowYears);
 					var response = {
 						"navigation": {
 							"lists": [
 								{
 									'type':'title',
-									'title':showIdOb.showIdList.length + ' ' + self.getPhishinI18nString('SHOWS_CONTAINING') + ': ' + showIdOb.songTitle,
+									'title':showIdOb[0].showIdList.length + ' ' + self.getPhishinI18nString('SHOWS_CONTAINING') + ': ' + showIdOb[0].songTitle,
 									"availableListViews":["list"],
 									"items":itemList
 								}
 							],
 							"prev":{
-								"uri":"phishin"
+								"uri":self.getPrevUri()
 							}
 						}
 					};
@@ -585,19 +613,21 @@ ControllerPhishin.prototype.getSongShows = function (songId){
 	var showIdOb = {
 		"showIdList":[]
 	}
-
 	unirest.get(uri).end( function(res){
 		if (res.error){
 			defer.reject(new Error(self.getPhishinI18nString('QUERY_ERROR')));
 			self.commandRouter.pushToastMessage('error', self.getPhishinI18nString('PHISHIN_QUERY'), self.getPhishinI18nString('QUERY_ERROR'));
+			self.historyPop();
 		}
 		else {
 			self.commandRouter.pushToastMessage('info', self.getPhishinI18nString('PHISHIN_QUERY'), self.getPhishinI18nString('RETREIVING') + ' ' + self.getPhishinI18nString('SHOWS_CONTAINING') + ' ' + res.body.data.title + '. ' + self.getPhishinI18nString('TAKE_AWHILE'));
 			showIdOb.songTitle = res.body.data.title;
 			var dataLength = res.body.data.tracks.length;
 			for (var i = 0; i < dataLength; i++) {
+				console.log("res.body.data.tracks[i].show_id: " + res.body.data.tracks[i].show_id);
 				showIdOb.showIdList.push(res.body.data.tracks[i].show_id);
 			}
+			console.log("showIdOb.showIdList: " + showIdOb.showIdList);
 			defer.resolve(showIdOb);
 		}
 	});
@@ -605,15 +635,17 @@ ControllerPhishin.prototype.getSongShows = function (songId){
 	return defer.promise;
 }
 
-ControllerPhishin.prototype.getShowInfo = function (showId, curUri) {
+ControllerPhishin.prototype.getShowInfo = function (showId) {
 	var self=this;
 	var defer=libQ.defer();
 
 	var showUri = phApiBaseUrl + 'shows/' + showId + '.json';
+	console.log(showUri);
 
 	unirest.get(showUri).end( function(resShow){
 		var months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 		if (resShow.error){
+			console.log("error here");
 			defer.reject(new Error(self.getPhishinI18nString('QUERY_ERROR')));
 			self.commandRouter.pushToastMessage('error', self.getPhishinI18nString('PHISHIN_QUERY'), self.getPhishinI18nString('QUERY_ERROR'));
 		}
@@ -622,8 +654,7 @@ ControllerPhishin.prototype.getShowInfo = function (showId, curUri) {
 			var showDate = months[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();
 			var showVenue = resShow.body.data.venue.name;
 			var showCity = resShow.body.data.venue.location;
-			var showUri = 'phishin/shows/'+  resShow.body.data.id + '?prevUri=' + curUri;
-			//self.logger.info(showDate+' '+showVenue+' '+showCity+', showUri: '+ showUri);
+			var showUri = 'phishin/shows/'+  resShow.body.data.id;
 			var showFolder = {
 				"service": self.serviceName,
 				"type": "folder",
@@ -647,14 +678,11 @@ ControllerPhishin.prototype.listVenueShows = function(curUri) {
 
 	var venueReq = curUri.split('/')[2];
 
-	return libQ.all([self.getVenueShows(venueReq), curUri])
-		.fail(function (e) {
-    	self.logger.debug("Failed to list song shows: " + e);
-  	})
-		.spread(function(showIdOb, prevUri){
+	return libQ.all(self.getVenueShows(venueReq))
+		.then(function(showIdOb){
 			var promises = [];
-			for (var i in showIdOb.showIdList) {
-				promises.push(self.getShowInfo(showIdOb.showIdList[i], prevUri));
+			for (var i in showIdOb[0].showIdList) {
+				promises.push(self.getShowInfo(showIdOb[0].showIdList[i]));
 			}
 			return libQ.all(promises)
 				.then(function(items){
@@ -662,32 +690,19 @@ ControllerPhishin.prototype.listVenueShows = function(curUri) {
 					for (var i in items){
 						itemList.push(items[i]);
 					}
-					function compareYears(a, b) {
-						const dateA = a.sortdate;
-						const dateB = b.sortdate;
-
-						let comparison = 0;
-						if (dateA > dateB) {
-							comparison = 1;
-						}
-						else if (dateA < dateB) {
-							comparison = -1;
-						}
-						return comparison;
-					}
-					itemList = itemList.sort(compareYears);
+					itemList = itemList.sort(self.compareShowYears);
 					var response = {
 						"navigation": {
 							"lists": [
 								{
 									'type':'title',
-									'title':showIdOb.showIdList.length + ' ' + self.getPhishinI18nString('SHOWS_PLAYEDAT') + ': ' + showIdOb.venueName,
+									'title':showIdOb[0].showIdList.length + ' ' + self.getPhishinI18nString('SHOWS_PLAYEDAT') + ': ' + showIdOb[0].venueName,
 									"availableListViews":["list"],
 									"items":itemList
 								}
 							],
 							"prev":{
-								"uri":"phishin"
+								"uri":self.getPrevUri()
 							}
 						}
 					};
@@ -707,13 +722,13 @@ ControllerPhishin.prototype.getVenueShows = function (venueId){
 		if (res.error){
 			defer.reject(new Error(self.getPhishinI18nString('QUERY_ERROR')));
 			self.commandRouter.pushToastMessage('error', self.getPhishinI18nString('PHISHIN_QUERY'), self.getPhishinI18nString('QUERY_ERROR'));
+			self.historyPop();
 		}
 		else {
-			self.commandRouter.pushToastMessage('info', self.getPhishinI18nString('PHISHIN_QUERY'), self.getPhishinI18nString('RETREIVING') + ' ' + self.getPhishinI18nString('SHOWS_PLAYEDAT') + ' ' + res.body.data.title + '. ' + self.getPhishinI18nString('TAKE_AWHILE'));
+			self.commandRouter.pushToastMessage('info', self.getPhishinI18nString('PHISHIN_QUERY'), self.getPhishinI18nString('RETREIVING') + ' ' + self.getPhishinI18nString('SHOWS_PLAYEDAT') + ' ' + res.body.data.name + '. ' + self.getPhishinI18nString('TAKE_AWHILE'));
 			showIdOb.venueName = res.body.data.name + ', ' + res.body.data.location;
 			showIdOb.showIdList = res.body.data.show_ids;
 		}
-		console.log(showIdOb);
 		defer.resolve(showIdOb);
 	});
 
@@ -728,15 +743,6 @@ ControllerPhishin.prototype.listShowTracks = function(curUri) {
 
 	var showUri = curUri.match(/[^?]*/);
 	showUri = showUri[0];
-	var prevUri = curUri.match(/prevUri=[^&\s]*/m);
-	if (!prevUri) {
-		prevUri = 'phishin';
-	}
-	else {
-		prevUri = prevUri[0];
-		prevUri = prevUri.substring(prevUri.indexOf('=') +1 ,prevUri.length);
-	}
-
 
 	var uriSplitted = showUri.split('/');
 	if (uriSplitted[1] == 'random') {
@@ -745,11 +751,9 @@ ControllerPhishin.prototype.listShowTracks = function(curUri) {
 	else {
 		var showId = uriSplitted[2];
 	}
-	//self.logger.info('ShowId: ' + showId);
 
 	var phishinDefer = self.getShowTracks(showId);
 	phishinDefer.then(function(results){
-		//self.logger.info("results[0] title: " + results[0].title);
 		var response = {
 			"navigation": {
 				"lists": [
@@ -759,15 +763,13 @@ ControllerPhishin.prototype.listShowTracks = function(curUri) {
 					}
 				],
 				"prev":{
-					"uri":prevUri
+					"uri":self.getPrevUri()
 				}
 			}
 		};
 		for (var i = 0; i < results.length; i++) {
-			//self.logger.info("track: " + results[i].title);
 			response.navigation.lists[0].items.push(results[i]);
 		}
-		//self.logger.info("1st item name: "+response.navigation.lists[0].items[0].title);
 
 		defer.resolve(response);
 
@@ -781,7 +783,6 @@ ControllerPhishin.prototype.getShowTracks = function(id, sendList) {
 	var self = this;
 	var defer = libQ.defer();
 	if (sendList === undefined) sendList = true;
-	self.logger.info("id in getShowTracks: " + id);
 
 	if (id === ""  || id === undefined) {
 		var uri = phApiBaseUrl + 'random-show.json';
@@ -789,12 +790,12 @@ ControllerPhishin.prototype.getShowTracks = function(id, sendList) {
 	else {
 		var uri = phApiBaseUrl + 'shows/' + id + '.json';
 	}
-	self.logger.info("uri in getShowTracks: " + uri);
 
 	unirest.get(uri).end( function(res){
 		if (res.error){
 			defer.reject(new Error(self.getPhishinI18nString('QUERY_ERROR')));
 			self.commandRouter.pushToastMessage('error', self.getPhishinI18nString('PHISHIN_QUERY'), self.getPhishinI18nString('QUERY_ERROR'));
+			self.historyPop();
 		}
 		else {
 			var response = [];
@@ -960,7 +961,40 @@ ControllerPhishin.prototype.resume = function() {
       return self.commandRouter.stateMachine.syncState(state, self.serviceName);
     });
   });
+}
 
+// Next
+ControllerPhishin.prototype.next = function() {
+	var self = this;
+  self.commandRouter.pushConsoleMessage('[' + Date.now() + '] ' + 'ControllerPhishin::next');
+	return self.mpdPlugin.sendMpdCommand('next', []).then(function () {
+    return self.mpdPlugin.getState().then(function (state) {
+      return self.commandRouter.stateMachine.syncState(state, self.serviceName);
+    });
+  });
+}
+
+// Previous
+ControllerPhishin.prototype.previous = function() {
+	var self = this;
+  self.commandRouter.pushConsoleMessage('[' + Date.now() + '] ' + 'ControllerPhishin::previous');
+	return self.mpdPlugin.sendMpdCommand('previous', []).then(function () {
+    return self.mpdPlugin.getState().then(function (state) {
+      return self.commandRouter.stateMachine.syncState(state, self.serviceName);
+    });
+  });
+}
+
+// prefetch for gapless Playback
+ControllerPhishin.prototype.prefetch = function(nextTrack) {
+	var self = this;
+	self.commandRouter.pushConsoleMessage('[' + Date.now() + '] ' + 'ControllerPhishin::prefetch');
+
+	var safeUri = nextTrack.uri.replace(/"/g,'\\"');
+	return self.mpdPlugin.sendMpdCommand('add "' + safeUri + '"', [])
+		.then(function() {
+			return self.mpdPlugin.sendMpdCommand('consume 1',[]);
+		});
 }
 
 // Get state
@@ -1087,8 +1121,10 @@ ControllerPhishin.prototype.search = function (query) {
   	searchCrit = year + '-' + matchArray[1] + '-' + matchArray[2];
 	}
 
-	self.logger.info("query.value: " + query.value);
-	self.logger.info("searchCrit: " + searchCrit);
+	self.resetHistory();
+
+	//self.logger.info("query.value: " + query.value);
+	//self.logger.info("searchCrit: " + searchCrit);
 	var searchUri = phApiBaseUrl + 'search/' + encodeURIComponent(searchCrit) + '.json';
 
 	unirest.get(searchUri).end( function(res){
@@ -1141,7 +1177,6 @@ ControllerPhishin.prototype.search = function (query) {
 					if(res.body.data.songs.length > 0) {
 					var songlist = [];
 					var songs =	self._searchSongs(res);
-					console.log(songs);
 					for (var i in songs) {
 						songlist.push(songs[i]);
 					}
@@ -1216,62 +1251,8 @@ ControllerPhishin.prototype._searchShows = function (res) {
 	}
 	return list;
 };
-/*
-ControllerPhishin.prototype._searchSongs = function (res) {
-	var self=this;
-	var songIdList = [];
-	var promises = [];
-	for (var i in res.body.data.songs) {
-		if (res.body.data.songs[i].alias_for) {
-			songIdList.push(res.body.data.songs[i].alias_for);
-		}
-		else {
-			songIdList.push(res.body.data.songs[i].id);
-		}
-	}
-	for (var i in songIdList) {
-		promises.push(self.getSongInfo(songIdList[i]));
-	}
-	var test = libQ.all(promises)
-		.then(function(items){
-			var list = [];
-			for (var i in items){
-				list.push(items[i]);
-			}
-			return list;
-		});
-	console.log(test);
-	console.log(test._data);
-	console.log(test._child);
-}
 
-ControllerPhishin.prototype.getSongInfo = function (songId) {
-	var self=this;
-	var defer=libQ.defer();
 
-	var songUri = phApiBaseUrl + 'songs/' + songId + '.json';
-
-	unirest.get(songUri).end( function(resSong){
-		if (resSong.error){
-			defer.reject(new Error(self.getPhishinI18nString('QUERY_ERROR')));
-			self.commandRouter.pushToastMessage('error', self.getPhishinI18nString('PHISHIN_QUERY'), self.getPhishinI18nString('QUERY_ERROR'));
-		}
-		else {
-			var item = {
-				"service": self.serviceName,
-				"type": "item-no-menu",
-				"title": resSong.body.data.title,
-				"artist": "",
-				"album": "",
-				"icon": "fa fa-headphones",
-				"uri": "phishin/song/" + songId
-			};
-			defer.resolve(item);
-		}
-	});
-	return defer.promise;
-}
-*/
 ControllerPhishin.prototype._searchSongs = function (res) {
 	//maybe instead query for song id list, then push new item for each query?
 	var self=this;
@@ -1361,3 +1342,17 @@ ControllerPhishin.prototype.getPhishinI18nString = function (key) {
   else
     return self.i18nStringsDefaults[key];
 };
+
+ControllerPhishin.prototype.compareShowYears = function (a, b) {
+	const dateA = a.sortdate;
+	const dateB = b.sortdate;
+
+	let comparison = 0;
+	if (dateA > dateB) {
+		comparison = 1;
+	}
+	else if (dateA < dateB) {
+		comparison = -1;
+	}
+	return comparison;
+}
