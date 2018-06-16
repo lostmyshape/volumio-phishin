@@ -11,7 +11,7 @@ TODO:
   * previous
   * random
   * repeat
-  * timer when mute~~
+  * timer when mute
 - ~~impliment prevUri like TuneIn Radio~~
 - add art (and figure out how to get it to display)
 - add links to phish.net
