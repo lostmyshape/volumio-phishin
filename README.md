@@ -6,7 +6,7 @@ Plugin to play over 1,500 live Phish audience recordings from [Phish.in](http://
 
 Plugin not yet complete.
 
-TODO:
+TODO (in no particular order):
 - fix mpd playback:
   * previous
   * random
@@ -15,3 +15,4 @@ TODO:
 - ~~impliment prevUri like TuneIn Radio~~
 - add art (and figure out how to get it to display)
 - add links to phish.net
+- gracefully fail search (currently when search fails due to no response from Phish.in, no results return from any music service)
