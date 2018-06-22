@@ -918,6 +918,11 @@ ControllerPhishin.prototype.clearAddPlayTrack = function(track) {
 		});
 }
 
+ControllerPhishin.prototype.clearAddPlayTracks = function(arrayTrackIds) {
+	console.log(arrayTrackIds);
+}
+
+
 ControllerPhishin.prototype.seek = function (timepos) {
 	var self = this;
   this.commandRouter.pushConsoleMessage('[' + Date.now() + '] ' + 'ControllerPhishin::seek to ' + timepos);
@@ -962,7 +967,7 @@ ControllerPhishin.prototype.resume = function() {
     });
   });
 }
-
+/*
 // Next
 ControllerPhishin.prototype.next = function() {
 	var self = this;
@@ -978,13 +983,15 @@ ControllerPhishin.prototype.next = function() {
 ControllerPhishin.prototype.previous = function() {
 	var self = this;
   self.commandRouter.pushConsoleMessage('[' + Date.now() + '] ' + 'ControllerPhishin::previous');
-	return self.mpdPlugin.sendMpdCommand('previous', []).then(function () {
+	console.log("currentPosition = " + self.commandRouter.stateMachine.currentPosition);
+/*	return self.mpdPlugin.sendMpdCommand('previous', []).then(function () {
     return self.mpdPlugin.getState().then(function (state) {
       return self.commandRouter.stateMachine.syncState(state, self.serviceName);
     });
   });
-}
 
+}
+*/
 // prefetch for gapless Playback
 ControllerPhishin.prototype.prefetch = function(nextTrack) {
 	var self = this;
@@ -993,7 +1000,13 @@ ControllerPhishin.prototype.prefetch = function(nextTrack) {
 	var safeUri = nextTrack.uri.replace(/"/g,'\\"');
 	return self.mpdPlugin.sendMpdCommand('add "' + safeUri + '"', [])
 		.then(function() {
-			return self.mpdPlugin.sendMpdCommand('consume 1',[]);
+			return self.mpdPlugin.sendMpdCommand('consume 1',[])
+				.then(function(){
+					return self.mpdPlugin.getState()
+						.then(function(state){
+							return self.commandRouter.stateMachine.syncState(state, self.serviceName);
+						});
+				});
 		});
 }
 
