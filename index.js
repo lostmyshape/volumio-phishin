@@ -913,8 +913,25 @@ ControllerPhishin.prototype.clearAddPlayTrack = function(track) {
 		})
 		.then(function()
 		{
-				self.commandRouter.stateMachine.setConsumeUpdateService('mpd');
-				return self.mpdPlugin.sendMpdCommand('play',[]);
+				//self.commandRouter.stateMachine.setConsumeUpdateService('mpd');
+				//return self.mpdPlugin.sendMpdCommand('play',[]);
+				self.mpdPlugin.clientMpd.on('system',function(status) {
+					self.logger.info('Phishin Status: ' + status);
+					self.mpdPlugin.getState()
+						.then(function(state) {
+							state.trackType = "Phishin track";
+							return self.commandRouter.stateMachine.syncState(state, self.serviceName);
+						});
+				});
+				return self.mpdPlugin.sendMpdCommand('play', [])
+					.then(function () {
+						return self.mpdPlugin.getState()
+							.then(function (state) {
+								state.trackType = "Phishin track";
+								self.commandRouter.pushConsoleMessage("ControllerPhishin: " + JSON.stringify(state));
+								return self.commandRouter.stateMachine.syncState(state, self.serviceName);
+							});
+					});
 		});
 }
 
@@ -926,8 +943,6 @@ ControllerPhishin.prototype.clearAddPlayTracks = function(arrayTrackIds) {
 ControllerPhishin.prototype.seek = function (timepos) {
 	var self = this;
   this.commandRouter.pushConsoleMessage('[' + Date.now() + '] ' + 'ControllerPhishin::seek to ' + timepos);
-	self.commandRouter.stateMachine.setConsumeUpdateService('mpd');
-
 	return self.mpdPlugin.seek(timepos);
 }
 
@@ -935,9 +950,14 @@ ControllerPhishin.prototype.seek = function (timepos) {
 ControllerPhishin.prototype.stop = function() {
 	var self = this;
 	self.commandRouter.pushConsoleMessage('[' + Date.now() + '] ' + 'ControllerPhishin::stop');
-	self.commandRouter.stateMachine.setConsumeUpdateService('mpd');
-	return self.mpdPlugin.stop();
-
+	return self.mpdPlugin.stop()
+		.then(function () {
+			return self.mpdPlugin.getState()
+				.then(function (state) {
+					state.trackType = "Phishin track";
+					return self.commandRouter.stateMachine.syncState(state, self.serviceName);
+				});
+		});
 }
 
 // Pause
@@ -945,43 +965,56 @@ ControllerPhishin.prototype.pause = function() {
 	var self = this;
 	self.commandRouter.pushConsoleMessage('[' + Date.now() + '] ' + 'ControllerPhishin::pause');
 
-	self.commandRouter.stateMachine.setConsumeUpdateService('mpd');
-	return self.mpdPlugin.pause();
-
+	return self.mpdPlugin.pause()
+		.then(function () {
+			return self.mpdPlugin.getState()
+				.then(function (state) {
+					state.trackType = "Phishin track";
+					return self.commandRouter.stateMachine.syncState(state, self.serviceName);
+				});
+		});
 }
 
 // Resume
 ControllerPhishin.prototype.resume = function() {
 	var self = this;
   self.commandRouter.pushConsoleMessage('[' + Date.now() + '] ' + 'ControllerPhishin::resume');
-	self.commandRouter.stateMachine.setConsumeUpdateService('mpd');
-	return self.mpdPlugin.resume();
+	return self.mpdPlugin.resume()
+		.then(function () {
+			return self.mpdPlugin.getState()
+				.then(function (state) {
+					state.trackType = "Phishin track";
+					return self.commandRouter.stateMachine.syncState(state, self.serviceName);
+				});
+		});
 }
-/*
+
 // Next
 ControllerPhishin.prototype.next = function() {
 	var self = this;
   self.commandRouter.pushConsoleMessage('[' + Date.now() + '] ' + 'ControllerPhishin::next');
-	return self.mpdPlugin.sendMpdCommand('next', []).then(function () {
-    return self.mpdPlugin.getState().then(function (state) {
-      return self.commandRouter.stateMachine.syncState(state, self.serviceName);
-    });
-  });
+	return self.mpdPlugin.sendMpdCommand('next', [])
+		.then(function () {
+    	return self.mpdPlugin.getState()
+				.then(function (state) {
+      		return self.commandRouter.stateMachine.syncState(state, self.serviceName);
+    		});
+  	});
 }
 
 // Previous
 ControllerPhishin.prototype.previous = function() {
 	var self = this;
   self.commandRouter.pushConsoleMessage('[' + Date.now() + '] ' + 'ControllerPhishin::previous');
-	console.log("currentPosition = " + self.commandRouter.stateMachine.currentPosition);
-/*	return self.mpdPlugin.sendMpdCommand('previous', []).then(function () {
-    return self.mpdPlugin.getState().then(function (state) {
-      return self.commandRouter.stateMachine.syncState(state, self.serviceName);
-    });
-  });
-
+	return self.mpdPlugin.sendMpdCommand('previous', [])
+		.then(function () {
+    	return self.mpdPlugin.getState()
+				.then(function (state) {
+      		return self.commandRouter.stateMachine.syncState(state, self.serviceName);
+    		});
+  	});
 }
-*/
+
 // prefetch for gapless Playback
 ControllerPhishin.prototype.prefetch = function(nextTrack) {
 	var self = this;
@@ -990,7 +1023,6 @@ ControllerPhishin.prototype.prefetch = function(nextTrack) {
 	var safeUri = nextTrack.uri.replace(/"/g,'\\"');
 	return self.mpdPlugin.sendMpdCommand('add "' + safeUri + '"', [])
 		.then(function() {
-			self.commandRouter.stateMachine.setConsumeUpdateService('mpd');
 			return self.mpdPlugin.sendMpdCommand('consume 1',[]);
 		});
 }
@@ -1016,7 +1048,7 @@ ControllerPhishin.prototype.pushState = function(state) {
 	var self = this;
 	self.commandRouter.pushConsoleMessage('[' + Date.now() + '] ' + 'ControllerPhishin::pushState');
 
-	return self.commandRouter.servicePushState(state, self.servicename);
+	return self.commandRouter.servicePushState(state, self.serviceName);
 };
 
 
