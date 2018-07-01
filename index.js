@@ -495,7 +495,6 @@ ControllerPhishin.prototype.listTodayShows = function(curUri) {
 	var mm = today.getMonth()+1;
 	var dd = today.getDate();
 	var todayMonthDay = mm + '-' + dd;
-	console.log("today's date: " + todayMonthDay);
 	var uri = phApiBaseUrl + 'shows-on-day-of-year/' + todayMonthDay + '.json';
 	var months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
@@ -914,25 +913,23 @@ ControllerPhishin.prototype.clearAddPlayTrack = function(track) {
 		})
 		.then(function()
 		{
-				//self.commandRouter.stateMachine.setConsumeUpdateService('mpd');
-				//return self.mpdPlugin.sendMpdCommand('play',[]);
-				self.mpdPlugin.ignoreUpdate(true);
-				self.mpdPlugin.clientMpd.on('system',function(status) {
-					self.logger.info('ControllerPhishin: MPD state update: ' + status);
-					self.mpdPlugin.getState()
-						.then(function(state) {
-							state.trackType = "Phishin track";
-							self.commandRouter.pushConsoleMessage("[DEBUG_PHISHIN]ControllerPhishin: " + JSON.stringify(state));
-							return self.commandRouter.stateMachine.syncState(state, self.serviceName);
-						});
-				});
+				self.mpdPlugin.clientMpd.on('system-player',function() {
+						self.commandRouter.pushConsoleMessage('[' + Date.now() + '] ' + 'ControllerPhishin: MPD player state update');
+						self.mpdPlugin.getState()
+							.then(function(state) {
+								state.trackType = "Phishin track";
+								self.commandRouter.pushConsoleMessage("[DEBUG_PHISHIN]ControllerPhishin: " + JSON.stringify(state));
+								return self.pushState(state);
+							});
+					});
+
 				return self.mpdPlugin.sendMpdCommand('play', [])
 					.then(function () {
 						return self.mpdPlugin.getState()
 							.then(function (state) {
 								state.trackType = "Phishin track";
-								self.commandRouter.pushConsoleMessage("ControllerPhishin: " + JSON.stringify(state));
-								return self.commandRouter.stateMachine.syncState(state, self.serviceName);
+								//self.commandRouter.pushConsoleMessage("ControllerPhishin: " + JSON.stringify(state));
+								return self.pushState(state);
 							});
 					});
 		});
@@ -958,7 +955,7 @@ ControllerPhishin.prototype.stop = function() {
 			return self.mpdPlugin.getState()
 				.then(function (state) {
 					state.trackType = "Phishin track";
-					return self.commandRouter.stateMachine.syncState(state, self.serviceName);
+					return self.pushState(state);
 				});
 		});
 }
@@ -973,7 +970,7 @@ ControllerPhishin.prototype.pause = function() {
 			return self.mpdPlugin.getState()
 				.then(function (state) {
 					state.trackType = "Phishin track";
-					return self.commandRouter.stateMachine.syncState(state, self.serviceName);
+					return self.pushState(state);
 				});
 		});
 }
@@ -987,7 +984,7 @@ ControllerPhishin.prototype.resume = function() {
 			return self.mpdPlugin.getState()
 				.then(function (state) {
 					state.trackType = "Phishin track";
-					return self.commandRouter.stateMachine.syncState(state, self.serviceName);
+					return self.pushState(state);
 				});
 		});
 }
@@ -1000,7 +997,7 @@ ControllerPhishin.prototype.next = function() {
 		.then(function () {
     	return self.mpdPlugin.getState()
 				.then(function (state) {
-      		return self.commandRouter.stateMachine.syncState(state, self.serviceName);
+					return self.pushState(state);
     		});
   	});
 }
@@ -1013,8 +1010,8 @@ ControllerPhishin.prototype.previous = function() {
 		.then(function () {
     	return self.mpdPlugin.getState()
 				.then(function (state) {
-      		return self.commandRouter.stateMachine.syncState(state, self.serviceName);
-    		});
+					return self.pushState(state);
+				});
   	});
 }
 
@@ -1025,24 +1022,10 @@ ControllerPhishin.prototype.prefetch = function(nextTrack) {
 
 	console.log("[DEBUG_PHISHIN]ControllerPhishin: prefetch nextTrack = " + JSON.stringify(nextTrack));
 	var safeUri = nextTrack.uri.replace(/"/g,'\\"');
-	return self.mpdPlugin.sendMpdCommand('status',[])
-		.then(function (plinfo) {
-	//		console.log("prefetchDone = " + this.commandRouter.stateMachine.prefetchDone);
-			console.log("playlistlength = " + plinfo.playlistlength);
-			if (plinfo.playlistlength !== undefined && plinfo.playlistlength < 2) {
-				return self.mpdPlugin.sendMpdCommand('add "' + safeUri + '"', [])
-					.then(function() {
-						return self.mpdPlugin.sendMpdCommand('consume 1',[]);
-					});
-			} else {
-				self.logger.info("Already prefetched! Stopping prefetch from overzealously grabbing tracks");
-			}
-		});
-/*	return self.mpdPlugin.sendMpdCommand('add "' + safeUri + '"', [])
+	return self.mpdPlugin.sendMpdCommand('add "' + safeUri + '"', [])
 		.then(function() {
 			return self.mpdPlugin.sendMpdCommand('consume 1',[]);
 		});
-*/
 }
 
 // Get state
