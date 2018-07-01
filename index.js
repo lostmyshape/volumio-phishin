@@ -406,8 +406,8 @@ ControllerPhishin.prototype.listYearShows = function(curUri) {
 		else {
 			var dataLength = res.body.data.length;
 			for (var i = 0; i < dataLength; i++){
-				var d = new Date(res.body.data[i].date);
-				var showDate = months[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();
+				var d = res.body.data[i].date.split('-');
+				var showDate = months[d[1]-1] + ' ' + parseInt(d[2],10) + ', ' + d[0];
 				var showVenue = res.body.data[i].venue_name;
 				var showCity = res.body.data[i].location;
 				var showUri = 'phishin/shows/'+  res.body.data[i].id + '?prevUri=' + curUri;
@@ -462,8 +462,8 @@ ControllerPhishin.prototype.listTourShows = function(curUri) {
 		else {
 			var dataLength = res.body.data.shows.length;
 			for (var i = 0; i < dataLength; i++){
-				var d = new Date(res.body.data.shows[i].date);
-				var showDate = months[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();
+				var d = res.body.data.shows[i].date.split('-');
+				var showDate = months[d[1]-1] + ' ' + parseInt(d[2],10) + ', ' + d[0];
 				var showVenue = res.body.data.shows[i].venue_name;
 				var showCity = res.body.data.shows[i].location;
 				var showUri = 'phishin/shows/'+  res.body.data.shows[i].id;
@@ -495,6 +495,7 @@ ControllerPhishin.prototype.listTodayShows = function(curUri) {
 	var mm = today.getMonth()+1;
 	var dd = today.getDate();
 	var todayMonthDay = mm + '-' + dd;
+	console.log("today's date: " + todayMonthDay);
 	var uri = phApiBaseUrl + 'shows-on-day-of-year/' + todayMonthDay + '.json';
 	var months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
@@ -523,8 +524,8 @@ ControllerPhishin.prototype.listTodayShows = function(curUri) {
 			if (dataLength > 0) {
 				//If shows returned, list them
 				for (var i = 0; i < dataLength; i++){
-					var d = new Date(res.body.data[i].date);
-					var showDate = months[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();
+					var d = res.body.data[i].date.split('-');
+					var showDate = months[d[1]-1] + ' ' + parseInt(d[2],10) + ', ' + d[0];
 					var showVenue = res.body.data[i].venue_name;
 					var showCity = res.body.data[i].location;
 					var showUri = 'phishin/shows/'+  res.body.data[i].id;
@@ -650,8 +651,8 @@ ControllerPhishin.prototype.getShowInfo = function (showId) {
 			self.commandRouter.pushToastMessage('error', self.getPhishinI18nString('PHISHIN_QUERY'), self.getPhishinI18nString('QUERY_ERROR'));
 		}
 		else {
-			var d = new Date(resShow.body.data.date);
-			var showDate = months[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();
+			var d = resShow.body.data.date.split('-');
+			var showDate = months[d[1]-1] + ' ' + parseInt(d[2],10) + ', ' + d[0];
 			var showVenue = resShow.body.data.venue.name;
 			var showCity = resShow.body.data.venue.location;
 			var showUri = 'phishin/shows/'+  resShow.body.data.id;
@@ -799,9 +800,9 @@ ControllerPhishin.prototype.getShowTracks = function(id, sendList) {
 		}
 		else {
 			var response = [];
-			var d = new Date(res.body.data.date);
+			var d = res.body.data.date.split('-');
 			var months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-			var showDate = months[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();
+			var showDate = months[d[1]-1] + ' ' + parseInt(d[2],10) + ', ' + d[0];
 			var showVenue = res.body.data.venue.name;
 			var showCity = res.body.data.venue.location;
 			var showTitle = showDate + ' ' + showVenue + ', ' + showCity;
@@ -848,9 +849,9 @@ ControllerPhishin.prototype.getTrack = function(id) {
 		}
 		else {
 			//create new promise, resolve then send to new function to add show title
-			var d = new Date(res.body.data.show_date);
+			var d = res.body.data.show_date.split('-');
 			var months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-			var showDate = months[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();
+			var showDate = months[d[1]-1] + ' ' + parseInt(d[2],10) + ', ' + d[0];
 			var showTitle = showDate;
 			var response = [{
 				"service": self.serviceName,
@@ -880,9 +881,9 @@ ControllerPhishin.prototype.getTrack = function(id) {
 				else {
 					var showVenue = titleRes.body.data.venue.name;
 					var showCity = titleRes.body.data.venue.location;
-					var d = new Date(titleRes.body.data.date);
+					var d = titleRes.body.data.date.split('-');
 					var months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-					var showDate = months[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();
+					var showDate = months[d[1]-1] + ' ' + parseInt(d[2],10) + ', ' + d[0];
 					var newShowTitle = showDate + ' ' + showVenue + ', ' + showCity;
 					result[0].album = newShowTitle;
 					deferRes.resolve(result);
@@ -915,11 +916,13 @@ ControllerPhishin.prototype.clearAddPlayTrack = function(track) {
 		{
 				//self.commandRouter.stateMachine.setConsumeUpdateService('mpd');
 				//return self.mpdPlugin.sendMpdCommand('play',[]);
+				self.mpdPlugin.ignoreUpdate(true);
 				self.mpdPlugin.clientMpd.on('system',function(status) {
-					self.logger.info('Phishin Status: ' + status);
+					self.logger.info('ControllerPhishin: MPD state update: ' + status);
 					self.mpdPlugin.getState()
 						.then(function(state) {
 							state.trackType = "Phishin track";
+							self.commandRouter.pushConsoleMessage("[DEBUG_PHISHIN]ControllerPhishin: " + JSON.stringify(state));
 							return self.commandRouter.stateMachine.syncState(state, self.serviceName);
 						});
 				});
@@ -1020,11 +1023,26 @@ ControllerPhishin.prototype.prefetch = function(nextTrack) {
 	var self = this;
 	self.commandRouter.pushConsoleMessage('[' + Date.now() + '] ' + 'ControllerPhishin::prefetch');
 
+	console.log("[DEBUG_PHISHIN]ControllerPhishin: prefetch nextTrack = " + JSON.stringify(nextTrack));
 	var safeUri = nextTrack.uri.replace(/"/g,'\\"');
-	return self.mpdPlugin.sendMpdCommand('add "' + safeUri + '"', [])
+	return self.mpdPlugin.sendMpdCommand('status',[])
+		.then(function (plinfo) {
+	//		console.log("prefetchDone = " + this.commandRouter.stateMachine.prefetchDone);
+			console.log("playlistlength = " + plinfo.playlistlength);
+			if (plinfo.playlistlength !== undefined && plinfo.playlistlength < 2) {
+				return self.mpdPlugin.sendMpdCommand('add "' + safeUri + '"', [])
+					.then(function() {
+						return self.mpdPlugin.sendMpdCommand('consume 1',[]);
+					});
+			} else {
+				self.logger.info("Already prefetched! Stopping prefetch from overzealously grabbing tracks");
+			}
+		});
+/*	return self.mpdPlugin.sendMpdCommand('add "' + safeUri + '"', [])
 		.then(function() {
 			return self.mpdPlugin.sendMpdCommand('consume 1',[]);
 		});
+*/
 }
 
 // Get state
@@ -1171,9 +1189,9 @@ ControllerPhishin.prototype.search = function (query) {
 				if(res.body.data.hasOwnProperty('show') && res.body.data.show) {
 					var showVenue = res.body.data.show.venue_name;
 					var showCity = res.body.data.show.location;
-					var d = new Date(res.body.data.show.date);
+					var d = res.body.data.show.date.split('-');
 					var months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-					var showDate = months[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();
+					var showDate = months[d[1]-1] + ' ' + parseInt(d[2],10) + ', ' + d[0];
 					var showUri = 'phishin/shows/'+  res.body.data.show.id;
 
 					var exactShow = {
@@ -1263,9 +1281,9 @@ ControllerPhishin.prototype._searchShows = function (res) {
 	for (var i in res.body.data.other_shows){
 		var showVenue = res.body.data.other_shows[i].venue_name;
 		var showCity = res.body.data.other_shows[i].location;
-		var d = new Date(res.body.data.other_shows[i].date);
+		var d = res.body.data.other_shows[i].date.split('-');
 		var months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-		var showDate = months[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();
+		var showDate = months[d[1]-1] + ' ' + parseInt(d[2],10) + ', ' + d[0];
 		var showUri = 'phishin/shows/'+  res.body.data.other_shows[i].id;
 
 		var item = {
