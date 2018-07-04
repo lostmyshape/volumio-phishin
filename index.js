@@ -899,6 +899,30 @@ ControllerPhishin.prototype.clearAddPlayTrack = function(track) {
 
 	var safeUri = track.uri.replace(/"/g,'\\"');
 
+	var phListenerCallback = () => {
+		self.commandRouter.pushConsoleMessage('[' + Date.now() + '] ' + 'ControllerPhishin: MPD player state update');
+		self.mpdPlugin.getState()
+			.then(function(state) {
+				console.log(state);
+				if (state.uri && state.uri.includes("phish.in")) {
+					self.mpdPlugin.clientMpd.once('system-player', phListenerCallback);
+					//state.trackType = "Phishin track";
+					return self.pushState(state);
+				} else {
+					self.commandRouter.pushConsoleMessage('[' + Date.now() + '] ' + 'ControllerPhishin: Not a Phish.in track, removing listener');
+				}
+			});
+	};
+/*
+	var phListenerCallback = () => {
+		self.commandRouter.pushConsoleMessage('[' + Date.now() + '] ' + 'ControllerPhishin: MPD player state update');
+		self.mpdPlugin.getState()
+			.then(function(state) {
+				state.trackType = "Phishin track";
+				return self.pushState(state);
+			});
+	};
+*/
 	return self.mpdPlugin.sendMpdCommand('stop',[])
 		.then(function()
 		{
@@ -906,32 +930,27 @@ ControllerPhishin.prototype.clearAddPlayTrack = function(track) {
 		})
 		.then(function()
 		{
-				return self.mpdPlugin.sendMpdCommand('load "'+safeUri+'"',[]);
+			return self.mpdPlugin.sendMpdCommand('load "'+safeUri+'"',[]);
 		})
 		.fail(function (e) {
-				return self.mpdPlugin.sendMpdCommand('add "'+safeUri+'"',[]);
+			return self.mpdPlugin.sendMpdCommand('add "'+safeUri+'"',[]);
 		})
 		.then(function()
 		{
-				self.mpdPlugin.clientMpd.on('system-player',function() {
-						self.commandRouter.pushConsoleMessage('[' + Date.now() + '] ' + 'ControllerPhishin: MPD player state update');
-						self.mpdPlugin.getState()
-							.then(function(state) {
-								state.trackType = "Phishin track";
-								self.commandRouter.pushConsoleMessage("[DEBUG_PHISHIN]ControllerPhishin: " + JSON.stringify(state));
-								return self.pushState(state);
-							});
-					});
+			//self.mpdPlugin.clientMpd.removeListener('system-player', phListenerCallback);
+			self.mpdPlugin.clientMpd.removeAllListeners('system-player');
+			self.mpdPlugin.clientMpd.once('system-player', phListenerCallback);
+			//self.mpdPlugin.clientMpd.on('system', phListenerCallback);
 
-				return self.mpdPlugin.sendMpdCommand('play', [])
-					.then(function () {
-						return self.mpdPlugin.getState()
-							.then(function (state) {
-								state.trackType = "Phishin track";
-								//self.commandRouter.pushConsoleMessage("ControllerPhishin: " + JSON.stringify(state));
-								return self.pushState(state);
-							});
-					});
+			return self.mpdPlugin.sendMpdCommand('play', [])
+				.then(function () {
+					return self.mpdPlugin.getState()
+						.then(function (state) {
+							//state.trackType = "Phishin track";
+							//self.commandRouter.pushConsoleMessage("ControllerPhishin: " + JSON.stringify(state));
+							return self.pushState(state);
+						});
+				});
 		});
 }
 
@@ -954,7 +973,7 @@ ControllerPhishin.prototype.stop = function() {
 		.then(function () {
 			return self.mpdPlugin.getState()
 				.then(function (state) {
-					state.trackType = "Phishin track";
+					//state.trackType = "Phishin track";
 					return self.pushState(state);
 				});
 		});
@@ -969,7 +988,7 @@ ControllerPhishin.prototype.pause = function() {
 		.then(function () {
 			return self.mpdPlugin.getState()
 				.then(function (state) {
-					state.trackType = "Phishin track";
+					//state.trackType = "Phishin track";
 					return self.pushState(state);
 				});
 		});
@@ -983,7 +1002,7 @@ ControllerPhishin.prototype.resume = function() {
 		.then(function () {
 			return self.mpdPlugin.getState()
 				.then(function (state) {
-					state.trackType = "Phishin track";
+					//state.trackType = "Phishin track";
 					return self.pushState(state);
 				});
 		});
