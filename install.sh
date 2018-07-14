@@ -1,9 +1,9 @@
 #!/bin/bash
-
-echo "Installing volumio-phishin Dependencies"
-sudo apt-get update
+echo "Installing Phish.in"
+#echo "Installing volumio-phishin Dependencies"
+#sudo apt-get update
 # Install the required packages via apt-get
-sudo apt-get -y install
+#sudo apt-get -y install
 
 # If you need to differentiate install for armhf and i386 you can get the variable like this
 #DPKG_ARCH=`dpkg --print-architecture`
