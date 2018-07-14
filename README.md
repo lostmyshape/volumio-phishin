@@ -4,16 +4,11 @@ Plugin to play over 1,500 live Phish audience recordings from [Phish.in](http://
 
 ---
 
-Plugin not yet complete.
-
-TODO (in no particular order):
-- ~~fix mpd playback:~~ (used technique in YouTube plugin to add listener and manage all controls)
-  * ~~previous~~
-  * ~~random~~
-  * ~~repeat~~
-  * ~~timer when mute~~
-- ~~impliment prevUri like TuneIn Radio~~
-- ~~fix prefetch (plays correct track but displays 1 track ahead)~~ (need patch in statemachine increasePlaybackTimer method to fix bugs)
-- add art (and figure out how to get it to display)
-- add links to phish.net
+KNOWN BUGS:
+- Seek may cause timer overruns that will cause UI to advance 1 track too far (fixed submitted in [PR #1583](https://github.com/volumio/Volumio2/pull/1583))
+- 2 consecutive tracks from Phish.in and another service may stop the player  (fixed submitted in [PR #1583](https://github.com/volumio/Volumio2/pull/1583))
 - gracefully fail search (currently when search fails due to no response from Phish.in, no results return from any music service)
+ 
+TODO (in no particular order):
+- add official art
+- add links to phish.net if possible

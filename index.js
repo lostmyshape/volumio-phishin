@@ -150,7 +150,8 @@ ControllerPhishin.prototype.addToBrowseSources = function () {
 			name: 'Phish.in',
 			uri: 'phishin',
 			plugin_type: 'music_service',
-			plugin_name: 'volumio-phishin'
+			plugin_name: 'volumio-phishin',
+			albumart: '/albumart?sourceicon=music_service/volumio-phishin/phishin.svg'
 	});
 };
 
@@ -822,7 +823,7 @@ ControllerPhishin.prototype.getShowTracks = function(id, sendList) {
 					"artist": "Phish",
 					"album": showTitle,
 					"icon": (sendList ? "fa fa-music" : ""),
-					"albumart": "/albumart?sourceicon=music_service/volumio_phishin/ph-cover.png",
+					"albumart": "/albumart?sourceicon=music_service/volumio-phishin/ph-cover.png",
 					"uri": (sendList ? "phishin/track/" + track.id +"?showTitle=" + showTitle : track.mp3),
 					"duration": Math.trunc(track.duration / 1000)
 				});
@@ -861,7 +862,7 @@ ControllerPhishin.prototype.getTrack = function(id) {
 				"artist": "Phish",
 				"album": showTitle,
 				"show_id": res.body.data.show_id,
-				"albumart": "/albumart?sourceicon=music_service/volumio_phishin/ph-cover.png",
+				"albumart": "/albumart?sourceicon=music_service/volumio-phishin/ph-cover.png",
 				"uri": res.body.data.mp3,
 				"duration": Math.trunc(res.body.data.duration / 1000)
 			}];

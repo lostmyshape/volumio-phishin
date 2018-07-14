@@ -6,7 +6,7 @@
 	"scripts": {
 		"test": "echo \"Error: no test specified\" && exit 1"
 	},
-	"author": "lostmyshape",
+	"author": "Noah McGee (lostmyshape)",
 	"license": "ISC",
 	"volumio_info": {
 		"prettyName": "Phish.in",
@@ -18,5 +18,19 @@
 		"kew": "^0.7.0",
 		"v-conf": "^1.4.0",
 		"unirest": ""
-	}
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/lostmyshape/volumio-phishin.git"
+	},
+	"keywords": [
+		"Phish",
+		"live",
+		"audience",
+		"volumio"
+	],
+	"bugs": {
+		"url": "https://github.com/lostmyshape/volumio-phishin/issues"
+	},
+	"homepage": "https://github.com/lostmyshape/volumio-phishin#readme"
 }
