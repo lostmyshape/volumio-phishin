@@ -1,7 +1,7 @@
 {
 	"name": "volumio-phishin",
 	"version": "1.0.0",
-	"description": "A Phish.in plugin for Volumio2. Live Phish audio streams via phish.in API.",
+	"description": "A Phish.in plugin for Volumio2. Play over 1,500 live Phish audience recordings from Phish.in..  Phish.in and the Volumio Phish.in music service plugin complies with Phish's official taping policy as described at http://phish.com/#/faq/taping-guidelines.",
 	"main": "index.js",
 	"scripts": {
 		"test": "echo \"Error: no test specified\" && exit 1"

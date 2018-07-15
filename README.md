@@ -2,6 +2,10 @@
 
 Plugin to play over 1,500 live Phish audience recordings from [Phish.in](http://phish.in).  Plugin uses the [Phish.in API v1](http://phish.in/api-docs).
 
+Phish.in and the Volumio Phish.in music service plugin complies with Phish's official taping policy as described at [http://phish.com/#/faq/taping-guidelines](http://phish.com/#/faq/taping-guidelines).
+
+
+
 ---
 
 KNOWN BUGS:
