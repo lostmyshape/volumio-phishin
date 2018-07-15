@@ -14,5 +14,5 @@ KNOWN BUGS:
 - gracefully fail search (currently when search fails due to no response from Phish.in, results from other music services might not return)
  
 TODO (in no particular order):
-- add official art
+- add higher res art?
 - add links to phish.net if possible
